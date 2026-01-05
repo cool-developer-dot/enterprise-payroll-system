@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Modern Corporate Blue Color Scheme */
+    --background: 248 250 252; /* #F8FAFC - soft off-white */
+    --foreground: 15 23 42; /* #0F172A - deep slate for primary text */
+    --primary: 37 99 235; /* #2563EB - corporate blue */
+    --primary-foreground: 255 255 255; /* white */
+    --secondary: 241 245 249; /* #F1F5F9 - light gray */
+    --secondary-foreground: 51 65 85; /* #334155 - slate for secondary text */
+    --muted: 241 245 249; /* #F1F5F9 */
+    --muted-foreground: 100 116 139; /* #64748B - muted gray for secondary text */
+    --accent: 37 99 235; /* #2563EB */
+    --accent-foreground: 255 255 255;
+    --border: 226 232 240; /* #E2E8F0 - light border */
+    --input: 226 232 240;
+    --ring: 37 99 235; /* #2563EB */
+    --card: 255 255 255; /* #FFFFFF - pure white for cards */
+    --card-foreground: 15 23 42; /* #0F172A */
+    --sidebar-background: 15 23 42; /* #0F172A - deep slate */
+    --sidebar-foreground: 255 255 255;
+    --sidebar-accent: 37 99 235; /* #2563EB */
+    --sidebar-border: 30 41 59; /* #1E293B */
+    /* Status Colors */
+    --success: 22 163 74; /* #16A34A - green */
+    --warning: 245 158 11; /* #F59E0B - amber */
+    --error: 220 38 38; /* #DC2626 - red */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-[#F8FAFC] text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent;
+  }
+  .glass-effect {
+    @apply backdrop-blur-xl bg-white border border-slate-200;
+  }
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+  }
+  .shadow-glow-lg {
+    box-shadow: 0 0 40px rgba(37, 99, 235, 0.3);
+  }
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
