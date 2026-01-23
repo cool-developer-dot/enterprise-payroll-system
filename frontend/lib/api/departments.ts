@@ -166,7 +166,6 @@ export const departmentsApi = {
         phone: user.phone,
         joinDate: user.joinDate,
         baseSalary: user.baseSalary,
-        hourlyRate: user.hourlyRate,
         managerId: user.managerId?._id || user.managerId,
       })),
     };

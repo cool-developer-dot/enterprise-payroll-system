@@ -310,7 +310,7 @@ export const generateLeaveReport = async (dateFrom, dateTo, departmentId = null)
  */
 export const generateDepartmentCostReport = async (dateFrom, dateTo) => {
   const departments = await Department.find({ status: 'active' }).lean();
-  const allUsers = await User.find({ status: 'active' }).select('_id departmentId baseSalary hourlyRate').lean();
+  const allUsers = await User.find({ status: 'active' }).select('_id departmentId baseSalary').lean();
 
   // Get paystubs for the period
   const paystubs = await PayStub.find({
@@ -321,11 +321,12 @@ export const generateDepartmentCostReport = async (dateFrom, dateTo) => {
     .lean();
 
   // Get timesheets for overtime calculation
+  // Note: System uses monthly salary only - overtime costs are calculated from paystubs
   const timesheets = await Timesheet.find({
     date: { $gte: new Date(dateFrom), $lte: new Date(dateTo) },
     status: 'approved',
   })
-    .populate('employeeId', 'departmentId department hourlyRate')
+    .populate('employeeId', 'departmentId department baseSalary')
     .lean();
 
   const departmentCosts = {};
@@ -352,13 +353,13 @@ export const generateDepartmentCostReport = async (dateFrom, dateTo) => {
     }
   });
 
-  // Calculate overtime costs from timesheets
-  timesheets.forEach(ts => {
-    const deptId = ts.employeeId?.departmentId?.toString();
-    if (deptId && departmentCosts[deptId] && ts.overtimeHours > 0) {
-      const hourlyRate = ts.employeeId?.hourlyRate || 0;
-      const overtimeRate = hourlyRate * 1.5; // Standard overtime rate
-      departmentCosts[deptId].totalOvertimeCost += (ts.overtimeHours || 0) * overtimeRate;
+  // Calculate overtime costs from paystubs (system uses monthly salary only)
+  // Overtime costs are already included in paystub grossPay for monthly salary employees
+  // Additional overtime compensation would be tracked separately if needed
+  paystubs.forEach(ps => {
+    const deptId = ps.employeeId?.departmentId?.toString();
+    if (deptId && departmentCosts[deptId] && ps.overtimePay > 0) {
+      departmentCosts[deptId].totalOvertimeCost += ps.overtimePay || 0;
     }
   });
 
@@ -617,14 +618,22 @@ export const generatePDF = async (reportType, reportData, reportId, generatedBy)
   // Generate report based on type
   addHeader(`${reportType.toUpperCase()} REPORT`);
 
+  // Helper function to format currency for PDF (PKR)
+  const formatCurrencyPDF = (amount) => {
+    if (amount === null || amount === undefined || isNaN(amount)) return 'Rs 0';
+    const numValue = typeof amount === 'number' ? amount : parseFloat(amount);
+    if (isNaN(numValue)) return 'Rs 0';
+    return `Rs ${numValue.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
   if (reportType === 'payroll') {
     const data = reportData.payrollSummary || reportData;
     addSection('Summary');
-    doc.fontSize(11).text(`Total Gross Pay: $${(data.totalGrossPay || data.totalPayroll || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-    doc.text(`Total Net Pay: $${(data.totalNetPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-    doc.text(`Total Deductions: $${(data.totalDeductions || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    doc.fontSize(11).text(`Total Gross Pay: ${formatCurrencyPDF(data.totalGrossPay || data.totalPayroll || 0)}`);
+    doc.text(`Total Net Pay: ${formatCurrencyPDF(data.totalNetPay || 0)}`);
+    doc.text(`Total Deductions: ${formatCurrencyPDF(data.totalDeductions || 0)}`);
     doc.text(`Employee Count: ${data.employeeCount || 0}`);
-    doc.text(`Average Pay: $${(data.averageSalary || data.averagePay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    doc.text(`Average Pay: ${formatCurrencyPDF(data.averageSalary || data.averagePay || 0)}`);
     doc.text(`Period: ${data.period || 'N/A'}`);
 
     if (reportData.paystubs && reportData.paystubs.length > 0) {
@@ -633,8 +642,8 @@ export const generatePDF = async (reportType, reportData, reportId, generatedBy)
       const rows = reportData.paystubs.slice(0, 50).map(ps => [
         ps.employeeName || 'N/A',
         new Date(ps.payDate).toLocaleDateString(),
-        `$${(ps.grossPay || 0).toFixed(2)}`,
-        `$${(ps.netPay || 0).toFixed(2)}`,
+        formatCurrencyPDF(ps.grossPay || 0),
+        formatCurrencyPDF(ps.netPay || 0),
       ]);
       addTable(headers, rows, [150, 100, 100, 100]);
     }
@@ -672,7 +681,7 @@ export const generatePDF = async (reportType, reportData, reportId, generatedBy)
       const rows = data.map(dept => [
         dept.department || 'N/A',
         dept.employeeCount || 0,
-        `$${(dept.totalCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        formatCurrencyPDF(dept.totalCost || 0),
         `${(dept.percentage || 0).toFixed(2)}%`,
       ]);
       addTable(headers, rows, [200, 100, 120, 100]);
@@ -687,8 +696,8 @@ export const generatePDF = async (reportType, reportData, reportId, generatedBy)
 
     if (data.payroll) {
       addSection('Payroll Summary');
-      doc.text(`Total Gross Pay: $${(data.payroll.totalGrossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      doc.text(`Total Net Pay: $${(data.payroll.totalNetPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      doc.text(`Total Gross Pay: ${formatCurrencyPDF(data.payroll.totalGrossPay || 0)}`);
+      doc.text(`Total Net Pay: ${formatCurrencyPDF(data.payroll.totalNetPay || 0)}`);
     }
 
     if (data.attendance) {
@@ -700,10 +709,10 @@ export const generatePDF = async (reportType, reportData, reportId, generatedBy)
     const data = reportData.reportData || reportData;
     if (data.summary) {
       addSection('Financial Summary');
-      doc.fontSize(11).text(`Total Gross Pay: $${(data.summary.totalGrossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      doc.text(`Total Net Pay: $${(data.summary.totalNetPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      doc.text(`Total Deductions: $${(data.summary.totalDeductions || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-      doc.text(`Total Taxes: $${(data.summary.totalTaxes || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      doc.fontSize(11).text(`Total Gross Pay: ${formatCurrencyPDF(data.summary.totalGrossPay || 0)}`);
+      doc.text(`Total Net Pay: ${formatCurrencyPDF(data.summary.totalNetPay || 0)}`);
+      doc.text(`Total Deductions: ${formatCurrencyPDF(data.summary.totalDeductions || 0)}`);
+      doc.text(`Total Taxes: ${formatCurrencyPDF(data.summary.totalTaxes || 0)}`);
       doc.text(`Period: ${data.summary.period || 'N/A'}`);
     }
   }
@@ -764,9 +773,12 @@ export const generateExcel = async (reportType, reportData, reportId, generatedB
   const fileName = `report-${reportType}-${reportId}-${Date.now()}.xlsx`;
   const filePath = path.join(UPLOADS_DIR, fileName);
 
-  // Helper function to format currency
+  // Helper function to format currency in PKR
   const formatCurrency = (value) => {
-    return typeof value === 'number' ? value.toFixed(2) : value;
+    if (value === null || value === undefined || isNaN(value)) return 'Rs 0';
+    const numValue = typeof value === 'number' ? value : parseFloat(value);
+    if (isNaN(numValue)) return 'Rs 0';
+    return `Rs ${numValue.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   // Helper function to add summary sheet
@@ -890,7 +902,7 @@ export const generateExcel = async (reportType, reportData, reportId, generatedB
           presentDays: emp.presentDays || 0,
           absentDays: emp.absentDays || 0,
           totalHours: formatCurrency(emp.totalHours || 0),
-          attendanceRate: `${formatCurrency(emp.attendanceRate || 0)}%`,
+          attendanceRate: `${(emp.attendanceRate || 0).toFixed(2)}%`,
         });
       });
 
@@ -957,7 +969,7 @@ export const generateExcel = async (reportType, reportData, reportId, generatedB
         totalSalary: formatCurrency(dept.totalSalary || 0),
         totalOvertimeCost: formatCurrency(dept.totalOvertimeCost || 0),
         totalCost: formatCurrency(dept.totalCost || 0),
-        percentage: `${formatCurrency(dept.percentage || 0)}%`,
+        percentage: `${(dept.percentage || 0).toFixed(2)}%`,
       });
     });
 
@@ -992,7 +1004,7 @@ export const generateExcel = async (reportType, reportData, reportId, generatedB
     if (data.attendance) {
       sheet.addRow(['Attendance Summary']);
       sheet.addRow(['Total Hours', formatCurrency(data.attendance.totalHours || 0)]);
-      sheet.addRow(['Attendance Rate', `${formatCurrency(data.attendance.attendanceRate || 0)}%`]);
+      sheet.addRow(['Attendance Rate', `${(data.attendance.attendanceRate || 0).toFixed(2)}%`]);
     }
   } else if (reportType === 'financial') {
     const data = reportData.reportData || reportData;

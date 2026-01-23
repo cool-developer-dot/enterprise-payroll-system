@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Link from "next/link";
 import { employeeService } from "@/lib/services/employeeService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function EmployeeDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export default function EmployeeDashboardPage() {
       const data = await employeeService.getDashboard();
       setDashboardData(data);
     } catch (error: any) {
-      console.error('Failed to load dashboard:', error);
+      toast.error(error?.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,7 @@ export default function EmployeeDashboardPage() {
     },
     {
       label: "Latest Pay",
-      value: dashboardData.kpis.latestPay > 0 ? `$${dashboardData.kpis.latestPay.toLocaleString()}` : "$0",
+      value: dashboardData.kpis.latestPay > 0 ? `Rs ${dashboardData.kpis.latestPay.toLocaleString()}` : "Rs 0",
       sublabel: dashboardData.latestPaystub ? new Date(dashboardData.latestPaystub.payDate).toLocaleDateString() : "No pay yet",
       icon: "💰",
     },
@@ -185,7 +186,7 @@ export default function EmployeeDashboardPage() {
               <>
                 <div>
                   <p className="text-xs text-[#64748B] mb-1">Net Pay</p>
-                  <p className="text-3xl font-bold text-[#0F172A]">${dashboardData.latestPaystub.netPay.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-[#0F172A]">Rs {dashboardData.latestPaystub.netPay.toLocaleString()}</p>
                 </div>
                 <div className="space-y-2 pt-4 border-t border-slate-200">
                   <div className="flex items-center justify-between">

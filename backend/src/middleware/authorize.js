@@ -28,8 +28,9 @@ export const authorizeSelfOrAdmin = (userIdParam = 'id') => {
     const requestedUserId = req.params[userIdParam] || req.body[userIdParam];
     const isSelf = req.user._id.toString() === requestedUserId?.toString();
     const isAdmin = req.user.role === 'admin';
+    const isManager = req.user.role === 'manager';
     
-    if (!isSelf && !isAdmin) {
+    if (!isSelf && !isAdmin && !isManager) {
       return next(new AccessDeniedError('You can only access your own resources.'));
     }
     
@@ -57,21 +58,9 @@ export const authorizeManagerOfEmployee = () => {
       return next(new AccessDeniedError('You must be logged in to access this resource.'));
     }
     
-    if (req.user.role === 'admin') {
+    // Admin and manager have full access
+    if (req.user.role === 'admin' || req.user.role === 'manager') {
       return next();
-    }
-    
-    if (req.user.role === 'manager') {
-      const employeeId = req.params.employeeId || req.params.id || req.body.employeeId;
-      
-      if (employeeId) {
-        const User = (await import('../models/User.js')).default;
-        const employee = await User.findById(employeeId);
-        
-        if (employee && employee.managerId?.toString() === req.user._id.toString()) {
-          return next();
-        }
-      }
     }
     
     return next(new AccessDeniedError('You can only manage your direct reports.'));

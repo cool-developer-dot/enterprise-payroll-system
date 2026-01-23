@@ -17,6 +17,7 @@ import {
   type ProjectStatus,
 } from "@/lib/services/businessService";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/hooks/useToast";
 
 const getStatusBadge = (status: ProjectStatus) => {
   const styles = {
@@ -97,11 +98,12 @@ export default function AddProjectPage() {
       }
 
       await businessService.addProject(formData);
+      toast.success("Project added successfully!");
       router.push("/admin/business");
     } catch (error: any) {
-      console.error("Failed to add project:", error);
       const errorMessage = error?.message || "Failed to add project. Please try again.";
       setErrors({ submit: errorMessage });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

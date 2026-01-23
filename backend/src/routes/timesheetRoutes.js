@@ -44,8 +44,8 @@ router.get('/departments', getUniqueDepartments);
 router.get('/roles', getUniqueRoles);
 
 // Bulk operations (must be before /:id)
-router.post('/bulk/approve', authorize('manager', 'admin'), validateBulkApprove, handleValidationErrors, bulkApproveTimesheets);
-router.post('/bulk/reject', authorize('manager', 'admin'), validateBulkReject, handleValidationErrors, bulkRejectTimesheets);
+router.post('/bulk/approve', authorize('manager', 'admin', 'dept_lead'), validateBulkApprove, handleValidationErrors, bulkApproveTimesheets);
+router.post('/bulk/reject', authorize('manager', 'admin', 'dept_lead'), validateBulkReject, handleValidationErrors, bulkRejectTimesheets);
 
 // Employee-specific routes (must be before /:id)
 router.get('/employee/:employeeId', getEmployeeTimesheets);
@@ -58,8 +58,8 @@ router.post('/', validateCreateTimesheet, handleValidationErrors, createTimeshee
 router.get('/:id', getTimesheetById);
 router.put('/:id', validateUpdateTimesheet, handleValidationErrors, updateTimesheet);
 router.post('/:id/submit', validateSubmitTimesheet, handleValidationErrors, submitTimesheetForApproval);
-router.post('/:id/approve', authorize('manager', 'admin'), validateApproveTimesheet, handleValidationErrors, approveTimesheetEntry);
-router.post('/:id/reject', authorize('manager', 'admin'), validateRejectTimesheet, handleValidationErrors, rejectTimesheetEntry);
+router.post('/:id/approve', authorize('manager', 'admin', 'dept_lead'), validateApproveTimesheet, handleValidationErrors, approveTimesheetEntry);
+router.post('/:id/reject', authorize('manager', 'admin', 'dept_lead'), validateRejectTimesheet, handleValidationErrors, rejectTimesheetEntry);
 
 export default router;
 

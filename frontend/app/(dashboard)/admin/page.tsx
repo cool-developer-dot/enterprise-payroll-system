@@ -21,8 +21,8 @@ export default function AdminDashboardPage() {
         const data = await adminService.getDashboardData();
         setDashboardData(data);
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }

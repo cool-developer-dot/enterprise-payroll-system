@@ -30,29 +30,83 @@ export const getDateRange = (startDate, endDate) => {
   return dates;
 };
 
-export const getPayPeriod = (date = new Date(), cycle = 'monthly') => {
+export const getPayPeriod = (date = new Date(), cycle = 'monthly', payDay = null) => {
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0); // Normalize to start of day
   let periodStart, periodEnd;
   
   if (cycle === 'monthly') {
     periodStart = new Date(d.getFullYear(), d.getMonth(), 1);
     periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    periodEnd.setHours(23, 59, 59, 999);
   } else if (cycle === 'bi-weekly') {
+    // Bi-weekly: 14-day periods, typically starting from a reference date
+    // For simplicity, we'll use the 1st and 16th of the month as period boundaries
     const dayOfMonth = d.getDate();
-    const biWeekStart = dayOfMonth <= 15 ? 1 : 16;
-    const biWeekEnd = dayOfMonth <= 15 ? 15 : new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    
-    periodStart = new Date(d.getFullYear(), d.getMonth(), biWeekStart);
-    periodEnd = new Date(d.getFullYear(), d.getMonth(), biWeekEnd);
+    if (dayOfMonth <= 15) {
+      periodStart = new Date(d.getFullYear(), d.getMonth(), 1);
+      periodEnd = new Date(d.getFullYear(), d.getMonth(), 15);
+    } else {
+      periodStart = new Date(d.getFullYear(), d.getMonth(), 16);
+      periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+    periodEnd.setHours(23, 59, 59, 999);
+  } else if (cycle === 'semi-monthly') {
+    // Semi-monthly: two periods per month, typically 1st-15th and 16th-end
+    const dayOfMonth = d.getDate();
+    if (dayOfMonth <= 15) {
+      periodStart = new Date(d.getFullYear(), d.getMonth(), 1);
+      periodEnd = new Date(d.getFullYear(), d.getMonth(), 15);
+    } else {
+      periodStart = new Date(d.getFullYear(), d.getMonth(), 16);
+      periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+    periodEnd.setHours(23, 59, 59, 999);
   } else if (cycle === 'weekly') {
-    const dayOfWeek = d.getDay();
-    const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-    periodStart = new Date(d.setDate(diff));
+    // Weekly: Monday to Sunday
+    const dayOfWeek = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Days to subtract to get Monday
+    periodStart = new Date(d);
+    periodStart.setDate(d.getDate() + diff);
     periodEnd = new Date(periodStart);
     periodEnd.setDate(periodEnd.getDate() + 6);
+    periodEnd.setHours(23, 59, 59, 999);
+  } else {
+    // Default to monthly
+    periodStart = new Date(d.getFullYear(), d.getMonth(), 1);
+    periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    periodEnd.setHours(23, 59, 59, 999);
   }
   
   return { periodStart, periodEnd };
+};
+
+/**
+ * Calculate the pay date for a given period based on cycle and payDay settings
+ */
+export const calculatePayDate = (periodEnd, cycle, payDay) => {
+  const payDate = new Date(periodEnd);
+  
+  if (cycle === 'monthly' && payDay) {
+    // Monthly: pay on a specific day of the following month
+    payDate.setMonth(payDate.getMonth() + 1);
+    payDate.setDate(Math.min(payDay, new Date(payDate.getFullYear(), payDate.getMonth() + 1, 0).getDate()));
+  } else if (cycle === 'bi-weekly' || cycle === 'weekly') {
+    // Bi-weekly/Weekly: typically pay 3-5 days after period ends
+    payDate.setDate(payDate.getDate() + (payDay || 3));
+  } else if (cycle === 'semi-monthly') {
+    // Semi-monthly: pay on a specific day of the same or following month
+    if (periodEnd.getDate() <= 15) {
+      // First half of month - pay on specified day of same month
+      payDate.setDate(Math.min(payDay || 20, new Date(payDate.getFullYear(), payDate.getMonth() + 1, 0).getDate()));
+    } else {
+      // Second half - pay on specified day of following month
+      payDate.setMonth(payDate.getMonth() + 1);
+      payDate.setDate(Math.min(payDay || 5, new Date(payDate.getFullYear(), payDate.getMonth() + 1, 0).getDate()));
+    }
+  }
+  
+  return payDate;
 };
 
 export const isBusinessDay = (date, workingDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']) => {

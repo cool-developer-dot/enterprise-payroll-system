@@ -36,10 +36,10 @@ router.use(authenticate);
 router.get('/periods', validatePayrollQuery, handleValidationErrors, getPayrollPeriods);
 router.get('/periods/current', getCurrentPeriod);
 router.get('/periods/:id', validatePeriodId, handleValidationErrors, getPayrollPeriodById);
-router.post('/periods', authorize('admin'), validateCreatePeriod, handleValidationErrors, createPayrollPeriod);
-router.put('/periods/:id', authorize('admin'), validateUpdatePeriod, handleValidationErrors, updatePayrollPeriod);
-router.post('/periods/:id/process', authorize('admin'), validateProcessPayroll, handleValidationErrors, processPayroll);
-router.post('/periods/:id/approve', authorize('admin'), validateApprovePayroll, handleValidationErrors, approvePayroll);
+router.post('/periods', authorize('admin', 'manager'), validateCreatePeriod, handleValidationErrors, createPayrollPeriod);
+router.put('/periods/:id', authorize('admin', 'manager'), validateUpdatePeriod, handleValidationErrors, updatePayrollPeriod);
+router.post('/periods/:id/process', authorize('admin', 'manager'), validateProcessPayroll, handleValidationErrors, processPayroll);
+router.post('/periods/:id/approve', authorize('admin', 'manager'), validateApprovePayroll, handleValidationErrors, approvePayroll);
 
 router.get('/next-date', getNextPayDate);
 
@@ -48,7 +48,7 @@ router.get('/paystubs/:id', validatePaystubId, handleValidationErrors, getPaystu
 router.get('/paystubs/:id/pdf', validatePaystubId, handleValidationErrors, getPaystubPDF);
 router.get('/paystubs/employee/:employeeId', validateEmployeeId, handleValidationErrors, getEmployeePaystubs);
 
-router.post('/calculate', authorize('admin'), validateCalculatePayroll, handleValidationErrors, calculatePayroll);
+router.post('/calculate', authorize('admin', 'manager'), validateCalculatePayroll, handleValidationErrors, calculatePayroll);
 
 export default router;
 

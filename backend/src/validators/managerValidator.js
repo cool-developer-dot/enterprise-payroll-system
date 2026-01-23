@@ -163,6 +163,57 @@ export const validatePerformanceUpdateFilters = [
     .withMessage('Limit must be between 1 and 100')
 ];
 
+export const validateUpdateSettings = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Name must be between 1 and 100 characters'),
+
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage('Phone must be less than 20 characters'),
+
+  body('preferences.emailNotifications')
+    .optional()
+    .isBoolean()
+    .withMessage('Email notifications must be a boolean'),
+
+  body('preferences.approvalNotifications')
+    .optional()
+    .isBoolean()
+    .withMessage('Approval notifications must be a boolean'),
+
+  body('preferences.defaultPeriod')
+    .optional()
+    .isIn(['current-month', 'last-month', 'current-quarter', 'last-quarter'])
+    .withMessage('Default period must be one of: current-month, last-month, current-quarter, last-quarter'),
+
+  body('preferences.language')
+    .optional()
+    .isLength({ min: 2, max: 5 })
+    .withMessage('Language must be between 2 and 5 characters'),
+
+  body('preferences.timezone')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Timezone must be less than 50 characters'),
+
+  body('preferences.dateFormat')
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage('Date format must be less than 20 characters'),
+
+  body('preferences.theme')
+    .optional()
+    .isIn(['light', 'dark', 'auto'])
+    .withMessage('Theme must be one of: light, dark, auto')
+];
+
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

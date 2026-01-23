@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import connectDB from './config/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +21,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import managerRoutes from './routes/managerRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
+import deptLeadRoutes from './routes/deptLeadRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import fileRoutes from './routes/fileRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -44,13 +46,20 @@ app.use(sanitizeXSS); // XSS prevention
 app.use(sanitizeInput); // Custom input sanitization
 app.use(validateObjectId); // Validate ObjectId format
 
-// CORS
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+// CORS - Production-ready configuration
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : process.env.NODE_ENV === 'production'
+    ? ['https://introup.io', 'https://www.introup.io']
+    : ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
@@ -60,8 +69,43 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-enc
 // Note: Auth routes have their own rate limiter, so they're excluded from general API limiter
 app.use('/api', apiLimiter); // General API rate limiting (excludes /api/auth routes)
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve static files from uploads directory with proper headers
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  maxAge: '1d', // Cache for 1 day
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    // Set CORS headers for all files
+    res.set('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    
+    // Set content-type for images
+    if (filePath.includes('.jpg') || filePath.includes('.jpeg') || 
+        filePath.includes('.png') || filePath.includes('.gif') || 
+        filePath.includes('.webp')) {
+      res.set('Content-Type', filePath.includes('.png') ? 'image/png' :
+                           filePath.includes('.jpg') || filePath.includes('.jpeg') ? 'image/jpeg' :
+                           filePath.includes('.gif') ? 'image/gif' :
+                           filePath.includes('.webp') ? 'image/webp' : 'image/jpeg');
+    }
+    // Set content-type for documents
+    else if (filePath.includes('.pdf')) {
+      res.set('Content-Type', 'application/pdf');
+    }
+    else if (filePath.includes('.doc') || filePath.includes('.docx')) {
+      res.set('Content-Type', 'application/msword');
+    }
+    else if (filePath.includes('.xls') || filePath.includes('.xlsx')) {
+      res.set('Content-Type', 'application/vnd.ms-excel');
+    }
+    else if (filePath.includes('.txt')) {
+      res.set('Content-Type', 'text/plain');
+    }
+    else if (filePath.includes('.csv')) {
+      res.set('Content-Type', 'text/csv');
+    }
+  }
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -75,10 +119,22 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'Payroll System API is running',
+    message: 'MeeTech Labs Management system API is running',
     timestamp: new Date().toISOString(),
     database: 'Connected',
     version: '1.0.0',
+  });
+});
+
+// API health check endpoint (for production monitoring)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'MeeTech Labs Management system API is running',
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    version: '1.0.0',
+    uptime: process.uptime(),
   });
 });
 
@@ -86,7 +142,7 @@ app.get('/health', (req, res) => {
 app.get('/api', (req, res) => {
   res.json({
     success: true,
-    message: 'Payroll System API',
+    message: 'MeeTech Labs Management system API',
     version: '1.0.0',
     endpoints: {
       health: '/health',
@@ -123,6 +179,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/employee', employeeRoutes);
+app.use('/api/dept_lead', deptLeadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/files', fileRoutes);
@@ -147,11 +204,29 @@ const startServer = async () => {
 
     // Start Express server
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 API URL: http://localhost:${PORT}/api`);
-      console.log(`🔒 Security: Rate limiting, XSS protection, MongoDB injection prevention enabled`);
-      console.log(`⚡ Performance: Query optimization and caching enabled`);
+      console.log(`\n╔════════════════════════════════════════════════════════╗`);
+      console.log(`║      🚀 MeeTech Labs Management system API Server Started           ║`);
+      console.log(`╠════════════════════════════════════════════════════════╣`);
+      console.log(`║  Port:         ${PORT.toString().padEnd(35)} ║`);
+      console.log(`║  Environment:  ${(process.env.NODE_ENV || 'development').padEnd(35)} ║`);
+      console.log(`║  API URL:      http://localhost:${PORT}/api${' '.repeat(13)}║`);
+      console.log(`╠════════════════════════════════════════════════════════╣`);
+      console.log(`║  🔒 Security Features:                                 ║`);
+      console.log(`║    • Rate limiting enabled                             ║`);
+      console.log(`║    • XSS protection enabled                            ║`);
+      console.log(`║    • MongoDB injection prevention                      ║`);
+      console.log(`║    • Input sanitization                                ║`);
+      console.log(`║    • Public registration: DISABLED                     ║`);
+      console.log(`╠════════════════════════════════════════════════════════╣`);
+      console.log(`║  ⚡ Performance:                                        ║`);
+      console.log(`║    • Query optimization enabled                        ║`);
+      console.log(`║    • Caching enabled                                   ║`);
+      console.log(`║    • Connection pooling: Active                        ║`);
+      console.log(`╠════════════════════════════════════════════════════════╣`);
+      console.log(`║  👤 Admin Access:                                       ║`);
+      console.log(`║    Only administrators can create user accounts        ║`);
+      console.log(`║    Run 'npm run create-admin' to setup first admin     ║`);
+      console.log(`╚════════════════════════════════════════════════════════╝\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

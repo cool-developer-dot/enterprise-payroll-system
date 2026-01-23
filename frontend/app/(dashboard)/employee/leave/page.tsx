@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { employeeService, type LeaveRequest, type LeaveBalance } from "@/lib/services/employeeService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function EmployeeLeavePage() {
   const [loading, setLoading] = useState(true);
@@ -38,8 +39,7 @@ export default function EmployeeLeavePage() {
       setLeaveBalances(balance);
       setLeaveHistory(result.leaveRequests);
     } catch (error: any) {
-      console.error('Failed to load leave data:', error);
-      alert(error.message || 'Failed to load leave data');
+      toast.error(error.message || 'Failed to load leave data');
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function EmployeeLeavePage() {
 
   const handleSubmitRequest = async () => {
     if (!requestData.type || !requestData.startDate || !requestData.endDate) {
-      alert('Please fill in all required fields');
+      toast.warning('Please fill in all required fields');
       return;
     }
 
@@ -60,12 +60,12 @@ export default function EmployeeLeavePage() {
         reason: requestData.reason || undefined,
       });
       
-      alert('Leave request submitted successfully');
+      toast.success('Leave request submitted successfully');
       setShowRequestModal(false);
       setRequestData({ type: "", startDate: "", endDate: "", reason: "" });
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to submit leave request');
+      toast.error(error.message || 'Failed to submit leave request');
     } finally {
       setSubmitting(false);
     }

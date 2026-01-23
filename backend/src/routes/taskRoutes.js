@@ -31,12 +31,12 @@ router.get('/employee/:employeeId', validateEmployeeId, handleValidationErrors, 
 router.get('/employee/:employeeId/current', validateEmployeeId, handleValidationErrors, getEmployeeCurrentTasks);
 router.get('/employee/:employeeId/upcoming', validateEmployeeId, handleValidationErrors, getEmployeeUpcomingTasks);
 
-router.post('/', authorize('manager', 'admin'), validateCreateTask, handleValidationErrors, createTask);
+router.post('/', authorize('manager', 'admin', 'dept_lead'), validateCreateTask, handleValidationErrors, createTask);
 
 router.get('/:id', getTaskById);
 router.put('/:id', validateUpdateTask, handleValidationErrors, updateTask);
 router.put('/:id/status', validateUpdateTaskStatus, handleValidationErrors, updateTaskStatusEndpoint);
-router.delete('/:id', authorize('admin'), deleteTask);
+router.delete('/:id', authorize('admin', 'manager'), deleteTask);
 
 export default router;
 

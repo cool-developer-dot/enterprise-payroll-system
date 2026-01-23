@@ -7,6 +7,8 @@ import Button from "@/components/ui/Button";
 interface PayrollPeriodTableProps {
   periods: PayrollPeriod[];
   onViewPeriod?: (period: PayrollPeriod) => void;
+  onEditPeriod?: (period: PayrollPeriod) => void;
+  onDownloadPeriod?: (period: PayrollPeriod) => void;
 }
 
 const getStatusBadge = (status: PayrollPeriod["status"]) => {
@@ -18,13 +20,13 @@ const getStatusBadge = (status: PayrollPeriod["status"]) => {
   return styles[status];
 };
 
-export default function PayrollPeriodTable({ periods, onViewPeriod }: PayrollPeriodTableProps) {
+export default function PayrollPeriodTable({ periods, onViewPeriod, onEditPeriod, onDownloadPeriod }: PayrollPeriodTableProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-PK", {
       style: "currency",
-      currency: "USD",
+      currency: "PKR",
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount).replace('PKR', 'Rs');
   };
 
   return (
@@ -80,10 +82,21 @@ export default function PayrollPeriodTable({ periods, onViewPeriod }: PayrollPer
                     >
                       View
                     </Button>
-                    {period.status === "completed" && (
+                    {period.status !== "completed" && onEditPeriod && (
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => onEditPeriod(period)}
+                        className="border-[#F59E0B]/20 text-[#F59E0B] hover:bg-[#F59E0B]/5"
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    {period.status === "completed" && onDownloadPeriod && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDownloadPeriod(period)}
                         className="border-slate-200 text-[#64748B] hover:bg-slate-50"
                       >
                         Download
@@ -118,11 +131,11 @@ export default function PayrollPeriodTable({ periods, onViewPeriod }: PayrollPer
               <div>
                 <span className="font-medium text-[#0F172A]">Amount:</span>{" "}
                 {period.totalAmount > 0
-                  ? new Intl.NumberFormat("en-US", {
+                  ? new Intl.NumberFormat("en-PK", {
                       style: "currency",
-                      currency: "USD",
+                      currency: "PKR",
                       minimumFractionDigits: 0,
-                    }).format(period.totalAmount)
+                    }).format(period.totalAmount).replace('PKR', 'Rs')
                   : "-"}
               </div>
             </div>
@@ -135,8 +148,23 @@ export default function PayrollPeriodTable({ periods, onViewPeriod }: PayrollPer
               >
                 View
               </Button>
-              {period.status === "completed" && (
-                <Button variant="outline" size="sm" className="flex-1 border-slate-200 text-[#64748B]">
+              {period.status !== "completed" && onEditPeriod && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEditPeriod(period)}
+                  className="flex-1 border-[#F59E0B]/20 text-[#F59E0B]"
+                >
+                  Edit
+                </Button>
+              )}
+              {period.status === "completed" && onDownloadPeriod && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDownloadPeriod(period)}
+                  className="flex-1 border-slate-200 text-[#64748B]"
+                >
                   Download
                 </Button>
               )}

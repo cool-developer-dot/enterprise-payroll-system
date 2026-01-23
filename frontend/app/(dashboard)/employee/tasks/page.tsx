@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Link from "next/link";
 import { taskService, type Task, type TaskStatus, type TaskPriority } from "@/lib/services/taskService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function EmployeeTasksPage() {
   const [loading, setLoading] = useState(true);
@@ -30,12 +31,11 @@ export default function EmployeeTasksPage() {
         taskService.getEmployeeCurrentTasks(user.id),
         taskService.getEmployeeUpcomingTasks(user.id),
       ]);
-      console.log("Tasks loaded:", { all, current, upcoming });
       setTasks(Array.isArray(all.data) ? all.data : []);
       setCurrentTasks(Array.isArray(current) ? current : []);
       setUpcomingTasks(Array.isArray(upcoming) ? upcoming : []);
     } catch (error: any) {
-      console.error("Failed to load tasks:", error);
+      toast.error(error?.message || 'Failed to load tasks');
       setTasks([]);
       setCurrentTasks([]);
       setUpcomingTasks([]);
@@ -47,12 +47,11 @@ export default function EmployeeTasksPage() {
   const handleStatusUpdate = async (taskId: string, newStatus: TaskStatus) => {
     try {
       await taskService.updateTaskStatus(taskId, newStatus);
-      alert(`Task status updated to ${newStatus} successfully!`);
+      toast.success(`Task status updated to ${newStatus} successfully!`);
       await loadTasks();
     } catch (error: any) {
-      console.error("Error updating task status:", error);
       const errorMessage = error?.message || error?.response?.data?.message || "Failed to update task status";
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

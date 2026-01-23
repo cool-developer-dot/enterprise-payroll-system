@@ -44,14 +44,14 @@ router.get('/departments', getUniqueDepartments);
 router.post('/requests', validateCreateLeaveRequest, handleValidationErrors, createLeaveRequest);
 router.put('/requests/:id', validateUpdateLeaveRequest, handleValidationErrors, updateLeaveRequest);
 
-// Manager/Admin routes for approvals
-router.post('/requests/:id/approve', authorize('manager', 'admin'), validateApproveRejectLeaveRequest, handleValidationErrors, approveLeaveRequest);
-router.post('/requests/:id/reject', authorize('manager', 'admin'), validateRejectLeaveRequest, handleValidationErrors, rejectLeaveRequest);
-router.post('/requests/bulk/approve', authorize('manager', 'admin'), validateBulkApproveReject, handleValidationErrors, bulkApproveLeaveRequests);
-router.post('/requests/bulk/reject', authorize('manager', 'admin'), validateBulkReject, handleValidationErrors, bulkRejectLeaveRequests);
+// Manager/Admin/Dept_Lead routes for approvals
+router.post('/requests/:id/approve', authorize('manager', 'admin', 'dept_lead'), validateApproveRejectLeaveRequest, handleValidationErrors, approveLeaveRequest);
+router.post('/requests/:id/reject', authorize('manager', 'admin', 'dept_lead'), validateRejectLeaveRequest, handleValidationErrors, rejectLeaveRequest);
+router.post('/requests/bulk/approve', authorize('manager', 'admin', 'dept_lead'), validateBulkApproveReject, handleValidationErrors, bulkApproveLeaveRequests);
+router.post('/requests/bulk/reject', authorize('manager', 'admin', 'dept_lead'), validateBulkReject, handleValidationErrors, bulkRejectLeaveRequests);
 
 // Balance routes
-router.get('/balances', authorize('admin'), getAllLeaveBalances);
+router.get('/balances', authorize('admin', 'manager'), getAllLeaveBalances);
 router.get('/balances/:employeeId', validateEmployeeId, handleValidationErrors, getEmployeeLeaveBalance);
 router.get('/balances/:employeeId/:year', validateEmployeeId, validateYear, handleValidationErrors, getYearSpecificBalance);
 

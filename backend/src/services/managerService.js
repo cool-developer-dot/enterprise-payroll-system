@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import Timesheet from '../models/Timesheet.js';
 import LeaveRequest from '../models/LeaveRequest.js';
 import PerformanceUpdate from '../models/PerformanceUpdate.js';
+import UserSession from '../models/UserSession.js';
 import { ResourceNotFoundError, InvalidInputError, AccessDeniedError } from '../utils/errorHandler.js';
 import mongoose from 'mongoose';
 
@@ -284,3 +285,189 @@ export const getTeamPerformance = async (managerId) => {
   };
 };
 
+/**
+ * Get manager settings (profile and preferences)
+ */
+export const getManagerSettings = async (managerId) => {
+  const user = await User.findById(managerId)
+    .select('-password')
+    .populate('departmentId', 'name code')
+    .lean();
+
+  if (!user) {
+    throw new ResourceNotFoundError('Manager');
+  }
+
+  // Extract preferences with defaults
+  const preferences = user.preferences || {};
+  const notificationPreferences = preferences.notifications || {
+    email: true,
+    push: true,
+    sms: false
+  };
+
+  return {
+    profile: {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      photo: user.photo,
+      department: user.department || user.departmentId?.name,
+      position: user.position
+    },
+    preferences: {
+      emailNotifications: notificationPreferences.email !== false,
+      approvalNotifications: notificationPreferences.email !== false, // Default to email notifications
+      defaultPeriod: preferences.defaultPeriod || 'current-month',
+      language: preferences.language || 'en',
+      timezone: preferences.timezone,
+      dateFormat: preferences.dateFormat || 'MM/DD/YYYY',
+      theme: preferences.theme || 'light'
+    }
+  };
+};
+
+/**
+ * Update manager settings (profile and preferences)
+ */
+export const updateManagerSettings = async (managerId, settingsData) => {
+  const user = await User.findById(managerId);
+
+  if (!user) {
+    throw new ResourceNotFoundError('Manager');
+  }
+
+  // Update profile fields if provided
+  if (settingsData.name !== undefined) {
+    user.name = settingsData.name.trim();
+  }
+  if (settingsData.phone !== undefined) {
+    user.phone = settingsData.phone?.trim() || null;
+  }
+
+  // Update preferences
+  if (settingsData.preferences) {
+    if (!user.preferences) {
+      user.preferences = {};
+    }
+
+    // Update notification preferences
+    if (settingsData.preferences.emailNotifications !== undefined || 
+        settingsData.preferences.approvalNotifications !== undefined) {
+      if (!user.preferences.notifications) {
+        user.preferences.notifications = {};
+      }
+      if (settingsData.preferences.emailNotifications !== undefined) {
+        user.preferences.notifications.email = settingsData.preferences.emailNotifications;
+      }
+      // Approval notifications use email notifications setting
+      if (settingsData.preferences.approvalNotifications !== undefined) {
+        user.preferences.notifications.email = settingsData.preferences.approvalNotifications;
+      }
+    }
+
+    // Update other preferences
+    if (settingsData.preferences.defaultPeriod !== undefined) {
+      user.preferences.defaultPeriod = settingsData.preferences.defaultPeriod;
+    }
+    if (settingsData.preferences.language !== undefined) {
+      user.preferences.language = settingsData.preferences.language;
+    }
+    if (settingsData.preferences.timezone !== undefined) {
+      user.preferences.timezone = settingsData.preferences.timezone;
+    }
+    if (settingsData.preferences.dateFormat !== undefined) {
+      user.preferences.dateFormat = settingsData.preferences.dateFormat;
+    }
+    if (settingsData.preferences.theme !== undefined) {
+      user.preferences.theme = settingsData.preferences.theme;
+    }
+  }
+
+  await user.save();
+
+  // Return updated settings
+  return await getManagerSettings(managerId);
+};
+
+/**
+ * Get active sessions for a manager
+ */
+export const getManagerSessions = async (managerId, currentSessionToken) => {
+  const sessions = await UserSession.find({
+    userId: managerId,
+    isActive: true,
+    expiresAt: { $gt: new Date() }
+  })
+    .sort({ lastActivity: -1 })
+    .lean();
+
+  // Format sessions for frontend
+  const formattedSessions = sessions.map(session => {
+    const isCurrent = session.sessionToken === currentSessionToken;
+    
+    // Parse user agent for device info
+    const userAgent = session.userAgent || '';
+    let device = 'Unknown Device';
+    let browser = 'Unknown Browser';
+    let os = 'Unknown OS';
+
+    if (userAgent) {
+      // Simple device detection
+      if (userAgent.includes('Mobile') || userAgent.includes('Android')) {
+        device = 'Mobile';
+      } else if (userAgent.includes('Tablet') || userAgent.includes('iPad')) {
+        device = 'Tablet';
+      } else {
+        device = 'Desktop';
+      }
+
+      // Browser detection
+      if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+        browser = 'Chrome';
+      } else if (userAgent.includes('Firefox')) {
+        browser = 'Firefox';
+      } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+        browser = 'Safari';
+      } else if (userAgent.includes('Edg')) {
+        browser = 'Edge';
+      }
+
+      // OS detection
+      if (userAgent.includes('Windows')) {
+        os = 'Windows';
+      } else if (userAgent.includes('Mac')) {
+        os = 'macOS';
+      } else if (userAgent.includes('Linux')) {
+        os = 'Linux';
+      } else if (userAgent.includes('Android')) {
+        os = 'Android';
+      } else if (userAgent.includes('iOS')) {
+        os = 'iOS';
+      }
+    }
+
+    // Format location
+    const location = session.location
+      ? `${session.location.city || ''}${session.location.city && session.location.country ? ', ' : ''}${session.location.country || ''}`.trim() || 'Unknown Location'
+      : 'Unknown Location';
+
+    // Format last active time
+    const lastActive = session.lastActivity
+      ? new Date(session.lastActivity).toLocaleString()
+      : 'Unknown';
+
+    return {
+      _id: session._id.toString(),
+      device: `${device} (${browser} on ${os})`,
+      location: location,
+      lastActive: lastActive,
+      ipAddress: session.ipAddress || 'Unknown',
+      current: isCurrent,
+      createdAt: session.createdAt
+    };
+  });
+
+  return formattedSessions;
+};

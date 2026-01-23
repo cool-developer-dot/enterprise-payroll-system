@@ -15,7 +15,6 @@ export interface User {
   phone?: string;
   joinDate?: string;
   baseSalary?: number;
-  hourlyRate?: number;
   managerId?: string;
   skills?: string[];
   fields?: string[];
@@ -52,7 +51,6 @@ export interface CreateUserRequest {
   status?: 'active' | 'inactive' | 'on-leave' | 'terminated';
   phone?: string;
   baseSalary?: number;
-  hourlyRate?: number;
   skills?: string[];
   fields?: string[];
 }
@@ -69,7 +67,6 @@ export interface UpdateUserRequest {
   status?: 'active' | 'inactive' | 'on-leave' | 'terminated';
   phone?: string;
   baseSalary?: number;
-  hourlyRate?: number;
   skills?: string[];
   fields?: string[];
 }
@@ -102,7 +99,6 @@ const transformUser = (user: any): User => ({
   phone: user.phone,
   joinDate: user.joinDate,
   baseSalary: user.baseSalary,
-  hourlyRate: user.hourlyRate,
   managerId: user.managerId?._id || user.managerId,
   skills: user.skills || [],
   fields: user.fields || [],
@@ -174,6 +170,89 @@ export const usersApi = {
 
   async getUniqueDepartments(): Promise<{ success: boolean; data: { departments: string[] } }> {
     return apiClient.get('/users/departments');
+  },
+
+  async uploadProfilePhoto(file: File): Promise<UserResponse & { photoUrl?: string }> {
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    
+    const response = await fetch(`${apiUrl}/users/profile/photo`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to upload profile photo' }));
+      throw new Error(error.message || 'Failed to upload profile photo');
+    }
+
+    const result = await response.json();
+    
+    // Use photoUrl from response data if available, otherwise use user.photo
+    // Response structure: { success: true, message: '...', data: { user: {...}, photoUrl: '...' } }
+    const user = result.data?.user || {};
+    const photoUrl = result.data?.photoUrl;
+    
+    // Update user photo with the photoUrl from response if available
+    if (photoUrl) {
+      user.photo = photoUrl;
+    }
+    
+    const transformedUser = transformUser(user);
+    
+    // Return response with photoUrl for easy access
+    return {
+      ...result,
+      data: { user: transformedUser },
+      photoUrl: photoUrl || transformedUser.photo,
+    };
+  },
+
+  async downloadProfilePDF(userId?: string): Promise<void> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    
+    // Use profile/download for current user, or /:id/download for specific user (admin only)
+    const endpoint = userId ? `/users/${userId}/download` : '/users/profile/download';
+    
+    const response = await fetch(`${apiUrl}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to download profile PDF' }));
+      throw new Error(error.message || 'Failed to download profile PDF');
+    }
+
+    // Get filename from Content-Disposition header or use default
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = 'profile.pdf';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Create blob and download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

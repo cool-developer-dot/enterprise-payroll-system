@@ -13,6 +13,8 @@ interface PayrollDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onRefresh?: () => void;
+  onEditPeriod?: (period: PayrollPeriod) => void;
+  onDownloadPeriod?: (period: PayrollPeriod) => void;
 }
 
 const getStatusBadge = (status: PayrollPeriod["status"]) => {
@@ -30,8 +32,11 @@ export default function PayrollDetailDrawer({
   isOpen,
   onClose,
   onRefresh,
+  onEditPeriod,
+  onDownloadPeriod,
 }: PayrollDetailDrawerProps) {
   const [processing, setProcessing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   
   if (!isOpen || !period) return null;
 
@@ -63,12 +68,31 @@ export default function PayrollDetailDrawer({
     }
   };
 
+  const handleDownload = async () => {
+    if (!onDownloadPeriod) return;
+    setDownloading(true);
+    try {
+      await onDownloadPeriod(period);
+    } catch (error: any) {
+      alert(error.message || "Failed to download payroll period report");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (onEditPeriod && period.status !== 'completed') {
+      onEditPeriod(period);
+      onClose();
+    }
+  };
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-PK", {
       style: "currency",
-      currency: "USD",
+      currency: "PKR",
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount).replace('PKR', 'Rs');
   };
 
   return (
@@ -167,13 +191,16 @@ export default function PayrollDetailDrawer({
             </CardContent>
           </Card>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
-            {period.status === "completed" && (
+          <div className="flex flex-col gap-3 pt-4 border-t border-slate-200">
+            <div className="flex gap-3">
+              {period.status === "completed" && onDownloadPeriod && (
               <Button
                 variant="default"
                 className="flex-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                  onClick={handleDownload}
+                  disabled={downloading}
               >
-                Download Payslip Summary
+                  {downloading ? "Downloading..." : "Download Payslip Summary"}
               </Button>
             )}
             {period.status === "draft" && (
@@ -196,10 +223,20 @@ export default function PayrollDetailDrawer({
                 {processing ? "Approving..." : "Approve Payroll"}
               </Button>
             )}
+              {period.status !== "completed" && onEditPeriod && (
+                <Button
+                  variant="outline"
+                  className="border-[#F59E0B]/20 text-[#F59E0B] hover:bg-[#F59E0B]/5"
+                  onClick={handleEdit}
+                >
+                  Edit Period
+                </Button>
+              )}
+            </div>
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1 border-slate-200 text-[#64748B] hover:bg-slate-50"
+              className="w-full border-slate-200 text-[#64748B] hover:bg-slate-50"
             >
               Close
             </Button>

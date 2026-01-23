@@ -53,6 +53,28 @@ export const getTasks = async (req, res, next) => {
     if (req.user.role === 'employee') {
       // Employees only see their own tasks
       query.employeeId = req.user._id;
+    } else if (req.user.role === 'dept_lead') {
+      // Dept leads see tasks assigned to them and tasks they assigned to their department employees
+      try {
+        // Get employees in the same department as dept_lead
+        const deptLead = await User.findById(req.user._id).select('department').lean();
+        const departmentEmployees = await User.find({
+          department: deptLead?.department,
+          role: 'employee',
+          status: { $in: ['active', 'on-leave'] }
+        }).select('_id').lean();
+        
+        const deptEmployeeIds = departmentEmployees.map(emp => emp._id.toString());
+        deptEmployeeIds.push(req.user._id.toString()); // Include dept_lead's own tasks
+        
+        query.$or = [
+          { employeeId: { $in: deptEmployeeIds.map(id => new mongoose.Types.ObjectId(id)) } },
+          { assignedBy: req.user._id } // Tasks assigned by dept_lead
+        ];
+      } catch (err) {
+        console.error('[getTasks] Error fetching department employees for dept_lead:', err);
+        query.employeeId = req.user._id; // Fallback to own tasks
+      }
     } else if (req.user.role === 'manager') {
       // Managers see tasks from their direct reports + their own tasks
       try {
@@ -161,15 +183,22 @@ export const getTaskById = async (req, res, next) => {
       return next(new AccessDeniedError('You can only view your own tasks'));
     }
     
-    if (req.user.role === 'manager') {
-      const employee = await User.findById(employeeId);
-      if (!employee) {
-        return next(new ResourceNotFoundError('Employee'));
-      }
-      const isManager = employee.managerId?.toString() === req.user._id.toString() || 
-                       employee.reportsTo?.toString() === req.user._id.toString();
-      if (!isManager && employeeIdStr !== req.user._id.toString()) {
-        return next(new AccessDeniedError('You can only view tasks for your direct reports'));
+    if (req.user.role === 'manager' || req.user.role === 'admin') {
+      // Admin and manager can view all tasks
+      // No additional check needed
+    } else if (req.user.role === 'dept_lead') {
+      // Dept leads can view tasks assigned to them or tasks they assigned
+      const isAssignedToDeptLead = employeeIdStr === req.user._id.toString();
+      const isAssignedByDeptLead = task.assignedBy?.toString() === req.user._id.toString();
+      
+      if (!isAssignedToDeptLead && !isAssignedByDeptLead) {
+        // Check if task is assigned to an employee in dept_lead's department
+        const employee = await User.findById(employeeId);
+        const deptLead = await User.findById(req.user._id).select('department').lean();
+        
+        if (!employee || employee.department !== deptLead?.department) {
+          return next(new AccessDeniedError('You can only view tasks for your department'));
+        }
       }
     }
     
@@ -200,6 +229,21 @@ export const createTask = async (req, res, next) => {
     
     if (dueDateOnly < today) {
       return next(new InvalidInputError('Due date cannot be in the past'));
+    }
+    
+    // Verify assignment permissions
+    const targetEmployee = await User.findById(employeeId);
+    if (!targetEmployee) {
+      return next(new ResourceNotFoundError('Employee'));
+    }
+    
+    // Admin and manager can assign to anyone (including dept_lead and employees)
+    // Dept_lead can only assign to employees in their department
+    if (req.user.role === 'dept_lead') {
+      const deptLead = await User.findById(req.user._id).select('department').lean();
+      if (targetEmployee.department !== deptLead?.department || targetEmployee.role !== 'employee') {
+        return next(new AccessDeniedError('You can only assign tasks to employees in your department'));
+      }
     }
     
     const taskData = {
@@ -258,17 +302,25 @@ export const updateTask = async (req, res, next) => {
     const employeeId = task.employeeId.toString();
     const isEmployee = req.user.role === 'employee' && employeeId === req.user._id.toString();
     const isManager = req.user.role === 'manager' || req.user.role === 'admin';
+    const isDeptLead = req.user.role === 'dept_lead';
     
-    if (!isEmployee && !isManager) {
-      if (req.user.role === 'manager') {
+    if (!isEmployee && !isManager && !isDeptLead) {
+      return next(new AccessDeniedError('You do not have permission to update this task'));
+    }
+    
+    // Dept_lead can only update tasks assigned to them or tasks they assigned
+    if (isDeptLead && !isManager) {
+      const isAssignedToDeptLead = employeeId === req.user._id.toString();
+      const isAssignedByDeptLead = task.assignedBy?.toString() === req.user._id.toString();
+      
+      if (!isAssignedToDeptLead && !isAssignedByDeptLead) {
+        // Check if task is assigned to an employee in dept_lead's department
         const employee = await User.findById(task.employeeId);
-        const isDirectReport = employee?.managerId?.toString() === req.user._id.toString() || 
-                               employee?.reportsTo?.toString() === req.user._id.toString();
-        if (!isDirectReport) {
-          return next(new AccessDeniedError('You can only update tasks for your direct reports'));
+        const deptLead = await User.findById(req.user._id).select('department').lean();
+        
+        if (!employee || employee.department !== deptLead?.department) {
+          return next(new AccessDeniedError('You can only update tasks for your department'));
         }
-      } else {
-        return next(new AccessDeniedError('You do not have permission to update this task'));
       }
     }
     
@@ -383,6 +435,27 @@ export const getEmployeeTasks = async (req, res, next) => {
       if (!isManager && employeeId !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view tasks for your direct reports'));
       }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view tasks for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeId !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view tasks for employees in your department'));
+      }
     }
     
     const pagination = buildPagination(page, limit);
@@ -421,6 +494,29 @@ export const getEmployeeCurrentTasks = async (req, res, next) => {
       return next(new AccessDeniedError('You can only view your own tasks'));
     }
     
+    if (req.user.role === 'dept_lead' && employeeId !== req.user._id.toString()) {
+      // Dept_lead can view tasks for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment) {
+        return next(new AccessDeniedError('You can only view tasks for employees in your department'));
+      }
+    }
+    
     const query = {
       employeeId: new mongoose.Types.ObjectId(employeeId),
       $or: [
@@ -450,6 +546,29 @@ export const getEmployeeUpcomingTasks = async (req, res, next) => {
     
     if (req.user.role === 'employee' && employeeId !== req.user._id.toString()) {
       return next(new AccessDeniedError('You can only view your own tasks'));
+    }
+    
+    if (req.user.role === 'dept_lead' && employeeId !== req.user._id.toString()) {
+      // Dept_lead can view tasks for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment) {
+        return next(new AccessDeniedError('You can only view tasks for employees in your department'));
+      }
     }
     
     const today = new Date();

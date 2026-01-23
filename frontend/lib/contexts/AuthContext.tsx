@@ -26,7 +26,7 @@ interface RegisterData {
   email: string;
   password: string;
   name: string;
-  role: 'admin' | 'manager' | 'employee';
+  role: 'admin' | 'manager' | 'dept_lead' | 'employee';
   employeeId?: string;
   department?: string;
   position?: string;
@@ -74,7 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         setUser(response.data.user);
-        router.push(`/${response.data.user.role}`);
+        // Normalize role for routing - dept_lead goes to /department_lead
+        const userRole = response.data.user.role?.toLowerCase().trim();
+        const routePath = (userRole === 'dept_lead' || userRole === 'department_lead') 
+          ? '/department_lead' 
+          : `/${userRole}`;
+        router.push(routePath);
       } else {
         throw new Error(response.message || 'Login failed');
       }
@@ -99,7 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         setUser(response.data.user);
-        router.push(`/${response.data.user.role}`);
+        // Normalize role for routing - dept_lead goes to /department_lead
+        const userRole = response.data.user.role?.toLowerCase().trim();
+        const routePath = (userRole === 'dept_lead' || userRole === 'department_lead') 
+          ? '/department_lead' 
+          : `/${userRole}`;
+        router.push(routePath);
       } else {
         throw new Error(response.message || 'Registration failed');
       }

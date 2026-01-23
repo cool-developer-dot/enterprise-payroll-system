@@ -25,6 +25,8 @@ export interface Task {
   employeeName?: string;
   employeeEmail?: string;
   employeeDepartment?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TasksResponse {
@@ -67,6 +69,8 @@ const transformTask = (task: any): Task => ({
   employeeName: task.employeeName || task.employeeId?.name,
   employeeEmail: task.employeeEmail || task.employeeId?.email,
   employeeDepartment: task.employeeDepartment || task.employeeId?.department,
+  createdAt: task.createdAt,
+  updatedAt: task.updatedAt,
 });
 
 export const taskApi = {

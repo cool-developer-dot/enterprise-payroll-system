@@ -9,7 +9,10 @@ import {
   getPerformanceUpdatesList,
   createPerformanceUpdateEndpoint,
   getPerformanceUpdate,
-  updatePerformanceUpdateEndpoint
+  updatePerformanceUpdateEndpoint,
+  getSettings,
+  updateSettings,
+  getSessions
 } from '../controllers/managerController.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorizeManagerOrAdmin } from '../middleware/authorize.js';
@@ -19,6 +22,7 @@ import {
   validateCreatePerformanceUpdate,
   validateUpdatePerformanceUpdate,
   validatePerformanceUpdateFilters,
+  validateUpdateSettings,
   handleValidationErrors
 } from '../validators/managerValidator.js';
 
@@ -37,6 +41,11 @@ router.get('/performance-updates', validatePerformanceUpdateFilters, handleValid
 router.post('/performance-updates', validateCreatePerformanceUpdate, handleValidationErrors, createPerformanceUpdateEndpoint);
 router.get('/performance-updates/:id', validatePerformanceUpdateId, handleValidationErrors, getPerformanceUpdate);
 router.put('/performance-updates/:id', validateUpdatePerformanceUpdate, handleValidationErrors, updatePerformanceUpdateEndpoint);
+
+// Settings routes
+router.get('/settings', getSettings);
+router.put('/settings', validateUpdateSettings, handleValidationErrors, updateSettings);
+router.get('/sessions', getSessions);
 
 export default router;
 

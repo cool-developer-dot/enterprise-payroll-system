@@ -1,7 +1,7 @@
 {
   "name": "payroll-backend",
   "version": "1.0.0",
-  "description": "Payroll System Backend API",
+  "description": "MeeTech Labs Management system Backend API",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "init-db": "node src/scripts/initDatabase.js",
+    "create-admin": "node src/scripts/createAdmin.js",
     "test-connection": "node src/scripts/testConnection.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

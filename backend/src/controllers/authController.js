@@ -36,46 +36,73 @@ export const login = async (req, res, next) => {
     
     const normalizedEmail = email.toLowerCase().trim();
     
-    // Debug logging (remove in production)
+    // Production-ready logging (masked for security)
     if (process.env.NODE_ENV === 'development') {
-      console.log('Login attempt:', { email: normalizedEmail, passwordLength: password.length });
+      console.log(`Login attempt: ${normalizedEmail} (password length: ${password.length})`);
+    } else {
+      // In production, log without sensitive data
+      console.log(`[AUTH] Login attempt: ${normalizedEmail}`);
     }
     
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
     
     if (!user) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('User not found for email:', normalizedEmail);
+      // Log failed login attempt (security monitoring)
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(`[SECURITY] Failed login attempt: ${normalizedEmail} - User not found`);
       }
+      // Return generic error to prevent email enumeration
       return next(new AuthenticationFailedError('The email address or password you entered is incorrect. Please try again.'));
     }
     
     if (!user.password) {
-      console.error('User found but password field is missing:', user._id);
+      console.error(`[ERROR] User ${user._id} (${user.email}) found but password field is missing`);
       return next(new AuthenticationFailedError('Account configuration error. Please contact support for assistance.'));
     }
     
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('User found:', { id: user._id, email: user.email, hasPassword: !!user.password, passwordStartsWith: user.password.substring(0, 10) });
-    }
-    
-    const isPasswordValid = await comparePassword(password, user.password);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Password comparison result:', isPasswordValid);
+    // Verify password with error handling (production-ready security)
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await comparePassword(password, user.password);
+    } catch (compareError) {
+      console.error(`[ERROR] Password comparison failed for user ${user._id}:`, compareError.message);
+      return next(new AuthenticationFailedError('Authentication failed. Please try again or contact support.'));
     }
     
     if (!isPasswordValid) {
-      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      // Increment login attempts for security (production-ready)
+      const newLoginAttempts = (user.loginAttempts || 0) + 1;
+      const updateData = {
+        loginAttempts: newLoginAttempts
+      };
       
-      if (user.loginAttempts >= 5) {
-        user.lockUntil = addDays(new Date(), 1);
-        await user.save();
-        return next(new AuthenticationFailedError('Your account has been temporarily locked due to multiple failed login attempts. Please contact support or try again later.'));
+      // Lock account after 5 failed attempts (production-ready security)
+      if (newLoginAttempts >= 5) {
+        updateData.lockUntil = addDays(new Date(), 1);
+        
+        // Use updateOne to avoid triggering validation for existing users
+        await User.updateOne({ _id: user._id }, { $set: updateData });
+        
+        // Log security event
+        if (process.env.NODE_ENV === 'production') {
+          console.warn(`[SECURITY] Account locked: ${user.email} after ${newLoginAttempts} failed login attempts`);
+        }
+        
+        return next(new AuthenticationFailedError(
+          'Your account has been temporarily locked due to multiple failed login attempts. ' +
+          'Please contact your administrator or try again after 24 hours.'
+        ));
       }
-      await user.save();
       
+      // Use updateOne to avoid triggering validation for existing users
+      await User.updateOne({ _id: user._id }, { $set: updateData });
+      
+      // Log failed attempt (without password info)
+      if (process.env.NODE_ENV === 'production') {
+        console.warn(`[SECURITY] Failed login: ${user.email} (attempt ${newLoginAttempts}/5)`);
+      }
+      
+      // Return generic error to prevent user enumeration
       return next(new AuthenticationFailedError('The email address or password you entered is incorrect. Please try again.'));
     }
     
@@ -92,11 +119,19 @@ export const login = async (req, res, next) => {
       return next(new AuthenticationFailedError('Your account has been temporarily locked due to multiple failed login attempts. Please contact support or try again later.'));
     }
     
-    user.loginAttempts = 0;
-    user.lockUntil = undefined;
-    user.lastLogin = new Date();
-    user.lastActiveAt = new Date();
-    await user.save();
+    // Update user login information without triggering full validation
+    // Use updateOne to avoid re-validating required fields for existing users
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          loginAttempts: 0,
+          lockUntil: undefined,
+          lastLogin: new Date(),
+          lastActiveAt: new Date(),
+        }
+      }
+    );
     
     const accessToken = generateAccessToken({ id: user._id, role: user.role });
     const refreshToken = generateRefreshToken({ id: user._id });
@@ -133,92 +168,44 @@ export const login = async (req, res, next) => {
       refreshToken,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    // Production-ready error handling
+    console.error('[ERROR] Login process failed:', error.message);
+    
+    // Handle MongoDB connection errors specifically
+    if (error.name === 'MongoServerSelectionError' || 
+        error.name === 'MongoNetworkError' ||
+        error.message?.includes('ENOTFOUND') ||
+        error.message?.includes('getaddrinfo')) {
+      console.error('[ERROR] Database connection error during login');
+      return next(new AuthenticationFailedError(
+        'Database service is temporarily unavailable. Please try again later or contact support.'
+      ));
+    }
+    
+    // Handle other errors
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[ERROR] Full login error:', error);
+    }
+    
     return next(error);
   }
 };
 
+/**
+ * DEPRECATED: Public registration is disabled for production security
+ * Only admins can create users through the /api/users endpoint
+ * This endpoint is kept for backward compatibility but returns an error
+ */
 export const register = async (req, res, next) => {
   try {
-    const { email, password, name, role, employeeId, department, position } = req.body;
-    
-    if (!email || !password || !name || !role) {
-      return next(new InvalidInputError('Email address, password, full name, and role are required to create an account'));
-    }
-    
-    const normalizedEmail = email.toLowerCase().trim();
-    const existingUser = await User.findOne({ 
-      $or: [
-        { email: normalizedEmail },
-        ...(employeeId ? [{ employeeId: employeeId.trim() }] : [])
-      ]
-    });
-    
-    if (existingUser) {
-      if (existingUser.email === normalizedEmail) {
-        return next(new DuplicateResourceError('An account with this email address already exists. Please use a different email or try logging in.'));
-      }
-      return next(new DuplicateResourceError('An account with this employee ID already exists. Please contact support if you believe this is an error.'));
-    }
-    
-    // Don't hash password here - let the User model's pre-save hook handle it
-    // This prevents double hashing which causes login failures
-    const userData = {
-      email: normalizedEmail,
-      password: password, // Plain password - will be hashed by pre-save hook
-      name: name.trim(),
-      role: role || 'employee',
-      ...(employeeId && { employeeId: employeeId.trim() }),
-      ...(department && { department: department.trim() }),
-      ...(position && { position: position.trim() }),
-      status: 'active',
-      createdAt: new Date(),
-    };
-    
-    const user = await User.create(userData);
-    
-    const accessToken = generateAccessToken({ id: user._id, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user._id });
-    
-    const clientInfo = getClientInfo(req);
-    const expiresAt = addDays(new Date(), 30);
-    
-    try {
-      await UserSession.create({
-        userId: user._id,
-        sessionToken: accessToken,
-        refreshToken: refreshToken,
-        ...clientInfo,
-        isActive: true,
-        expiresAt: expiresAt,
-      });
-    } catch (sessionError) {
-      console.error('Session creation error during registration:', sessionError);
-      // Continue even if session creation fails
-    }
-    
-    const userResponse = {
-      id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      employeeId: user.employeeId,
-    };
-    
-    return sendSuccess(res, 201, 'User registered successfully', {
-      user: userResponse,
-      accessToken,
-      refreshToken,
-    });
+    // Public registration is disabled - only admin can create users
+    // Users should be created by admin through /api/users endpoint
+    return next(new AuthenticationFailedError(
+      'Public registration is disabled. Please contact your administrator to create an account. ' +
+      'Only system administrators can create user accounts.'
+    ));
   } catch (error) {
     console.error('Registration error:', error);
-    if (error.code === 11000) {
-      return next(new DuplicateResourceError('An account with this information already exists. Please use different credentials or contact support.'));
-    }
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors || {}).map((e) => e.message);
-      return next(new InvalidInputError(`Please check your information: ${errors.join('. ')}`));
-    }
     return next(error);
   }
 };

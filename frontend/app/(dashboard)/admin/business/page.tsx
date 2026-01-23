@@ -38,8 +38,8 @@ export default function AdminBusinessPage() {
       ]);
       setProjects(projectsData);
       setAggregatedInsights(aggregatedData);
-    } catch (error) {
-      console.error("Failed to load business data:", error);
+    } catch (error: any) {
+      // Error handled silently - UI will show empty state
     } finally {
       setLoading(false);
     }

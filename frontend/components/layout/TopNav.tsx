@@ -15,7 +15,8 @@ export default function TopNav({ role }: TopNavProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const settingsPath = 
-    role === ROLES.MANAGER ? "/manager/settings" : 
+    role === ROLES.MANAGER ? "/admin/settings" : 
+    role === ROLES.DEPT_LEAD ? "/department_lead/profile" :
     role === ROLES.EMPLOYEE ? "/employee/profile" : 
     "/admin/settings";
 
@@ -25,18 +26,18 @@ export default function TopNav({ role }: TopNavProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 bg-white/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 shadow-sm">
-      {role === ROLES.MANAGER && (
+      {(role === ROLES.MANAGER || role === ROLES.DEPT_LEAD) && (
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center overflow-hidden p-1.5">
-            <img src="/payroll logo.png" alt="InsightPayroll" className="w-full h-full object-contain" />
+          <div className="h-16 w-16 flex items-center justify-center">
+            <img src="/payroll logo.png" alt="MeeTech Labs Management system" className="w-full h-full object-contain drop-shadow-md" />
           </div>
-          <h1 className="text-lg font-bold text-[#0F172A] hidden sm:block">InsightPayroll</h1>
+          <h1 className="text-lg font-bold text-[#0F172A] hidden sm:block">MeeTech Labs Management system</h1>
         </div>
       )}
       <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-4">
           <NotificationBell />
-          {role !== ROLES.MANAGER && (
+          {role !== ROLES.MANAGER && role !== ROLES.DEPT_LEAD && (
             <div className="hidden sm:flex items-center gap-3">
               <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center shadow-md">
                 <span className="text-xs sm:text-sm font-bold text-white">
@@ -51,7 +52,7 @@ export default function TopNav({ role }: TopNavProps) {
               </div>
             </div>
           )}
-          {role === ROLES.MANAGER ? (
+          {(role === ROLES.MANAGER || role === ROLES.DEPT_LEAD) ? (
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -73,12 +74,17 @@ export default function TopNav({ role }: TopNavProps) {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-20">
-                    <Link href="/manager" className="block px-4 py-2 text-sm text-[#0F172A] hover:bg-slate-50">
+                    <Link 
+                      href={role === ROLES.DEPT_LEAD ? "/department_lead/profile" : "/admin/profile"} 
+                      className="block px-4 py-2 text-sm text-[#0F172A] hover:bg-slate-50"
+                    >
                       Profile
                     </Link>
-                    <Link href={settingsPath} className="block px-4 py-2 text-sm text-[#0F172A] hover:bg-slate-50">
-                      Settings
-                    </Link>
+                    {role === ROLES.MANAGER && (
+                      <Link href={settingsPath} className="block px-4 py-2 text-sm text-[#0F172A] hover:bg-slate-50">
+                        Settings
+                      </Link>
+                    )}
                     <div className="border-t border-slate-200" />
                     <button
                       onClick={handleLogout}

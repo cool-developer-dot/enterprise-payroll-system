@@ -19,7 +19,7 @@ const rolePermissionSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    enum: ['admin', 'manager', 'employee']
+    enum: ['admin', 'manager', 'dept_lead', 'employee']
   },
   roleName: { type: String, required: true },
   description: { type: String },

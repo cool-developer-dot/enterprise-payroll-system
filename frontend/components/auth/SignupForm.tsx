@@ -16,6 +16,7 @@ const roleOptions = [
   { value: "", label: "Select your role", disabled: true },
   { value: ROLES.ADMIN, label: "Administrator" },
   { value: ROLES.MANAGER, label: "Manager" },
+  { value: ROLES.DEPT_LEAD, label: "Department Lead" },
   { value: ROLES.EMPLOYEE, label: "Employee" },
 ];
 
@@ -70,7 +71,7 @@ export default function SignupForm({ onFlip }: SignupFormProps) {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        role: formData.role as 'admin' | 'manager' | 'employee',
+        role: formData.role as 'admin' | 'manager' | 'dept_lead' | 'employee',
         ...(formData.department && { department: formData.department }),
         ...(formData.position && { position: formData.position }),
       });
@@ -100,16 +101,16 @@ export default function SignupForm({ onFlip }: SignupFormProps) {
     <Card className="w-full h-full glass-effect overflow-y-auto">
       <CardHeader className="pb-6">
         <div className="flex flex-col items-center space-y-4">
-          <div className="h-20 w-20 rounded-2xl flex items-center justify-center shadow-glow overflow-hidden bg-white p-2">
+          <div className="h-40 w-40 flex items-center justify-center">
             <img 
               src="/payroll logo.png" 
-              alt="InsightPayroll Logo" 
-              className="w-full h-full object-contain"
+              alt="MeeTech Labs Management system Logo" 
+              className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
           <CardTitle className="text-3xl font-bold text-[#0F172A]">Create Account</CardTitle>
           <p className="text-sm text-[#64748B] text-center">
-            Sign up to get started with Payroll System
+            Sign up to get started with MeeTech Labs Management system
           </p>
         </div>
       </CardHeader>

@@ -80,16 +80,16 @@ const generatePaystubPDF = (paystub, companySettings) => {
         <tr>
           <td>Regular Hours</td>
           <td class="text-right">${paystub.regularHours.toFixed(2)}</td>
-          <td class="text-right">$${paystub.regularRate?.toFixed(2) || '0.00'}</td>
-          <td class="text-right">$${((paystub.regularHours || 0) * (paystub.regularRate || 0)).toFixed(2)}</td>
+          <td class="text-right">Rs ${(paystub.regularRate || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+          <td class="text-right">Rs ${((paystub.regularHours || 0) * (paystub.regularRate || 0)).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         </tr>
         ` : ''}
         ${paystub.overtimeHours > 0 ? `
         <tr>
           <td>Overtime Hours</td>
           <td class="text-right">${paystub.overtimeHours.toFixed(2)}</td>
-          <td class="text-right">$${paystub.overtimeRate?.toFixed(2) || '0.00'}</td>
-          <td class="text-right">$${paystub.overtimePay?.toFixed(2) || '0.00'}</td>
+          <td class="text-right">Rs ${(paystub.overtimeRate || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+          <td class="text-right">Rs ${(paystub.overtimePay || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         </tr>
         ` : ''}
         ${paystub.bonuses && paystub.bonuses.length > 0 ? paystub.bonuses.map(b => `
@@ -97,12 +97,12 @@ const generatePaystubPDF = (paystub, companySettings) => {
           <td>${b.name || 'Bonus'}</td>
           <td class="text-right">-</td>
           <td class="text-right">-</td>
-          <td class="text-right">$${b.amount?.toFixed(2) || '0.00'}</td>
+          <td class="text-right">Rs ${(b.amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         </tr>
         `).join('') : ''}
         <tr class="total-row">
           <td colspan="3"><strong>Gross Pay</strong></td>
-          <td class="text-right"><strong>$${paystub.grossPay?.toFixed(2) || '0.00'}</strong></td>
+          <td class="text-right"><strong>Rs ${(paystub.grossPay || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
         </tr>
       </tbody>
     </table>
@@ -119,28 +119,28 @@ const generatePaystubPDF = (paystub, companySettings) => {
       </thead>
       <tbody>
         ${paystub.taxes ? `
-        <tr><td>Federal Tax</td><td class="text-right">$${paystub.taxes.federal?.toFixed(2) || '0.00'}</td></tr>
-        <tr><td>State Tax</td><td class="text-right">$${paystub.taxes.state?.toFixed(2) || '0.00'}</td></tr>
-        <tr><td>Local Tax</td><td class="text-right">$${paystub.taxes.local?.toFixed(2) || '0.00'}</td></tr>
-        <tr><td>Social Security</td><td class="text-right">$${paystub.taxes.socialSecurity?.toFixed(2) || '0.00'}</td></tr>
-        <tr><td>Medicare</td><td class="text-right">$${paystub.taxes.medicare?.toFixed(2) || '0.00'}</td></tr>
+        <tr><td>Federal Tax</td><td class="text-right">Rs ${(paystub.taxes.federal || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td></tr>
+        <tr><td>State Tax</td><td class="text-right">Rs ${(paystub.taxes.state || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td></tr>
+        <tr><td>Local Tax</td><td class="text-right">Rs ${(paystub.taxes.local || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td></tr>
+        <tr><td>Social Security</td><td class="text-right">Rs ${(paystub.taxes.socialSecurity || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td></tr>
+        <tr><td>Medicare</td><td class="text-right">Rs ${(paystub.taxes.medicare || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td></tr>
         ` : ''}
         ${paystub.deductions && paystub.deductions.length > 0 ? paystub.deductions.map(d => `
         <tr>
           <td>${d.name || 'Deduction'}</td>
-          <td class="text-right">$${d.amount?.toFixed(2) || '0.00'}</td>
+          <td class="text-right">Rs ${(d.amount || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
         </tr>
         `).join('') : ''}
         <tr class="total-row">
           <td><strong>Total Deductions</strong></td>
-          <td class="text-right"><strong>$${paystub.totalDeductions?.toFixed(2) || '0.00'}</strong></td>
+          <td class="text-right"><strong>Rs ${(paystub.totalDeductions || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div class="net-pay">
-    NET PAY: $${paystub.netPay?.toFixed(2) || '0.00'}
+    NET PAY: Rs ${(paystub.netPay || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
   </div>
 
   ${paystub.ytdGrossPay !== undefined ? `
@@ -149,15 +149,15 @@ const generatePaystubPDF = (paystub, companySettings) => {
     <div class="info-grid">
       <div class="info-item">
         <div class="info-label">YTD Gross Pay</div>
-        <div class="info-value">$${paystub.ytdGrossPay?.toFixed(2) || '0.00'}</div>
+        <div class="info-value">Rs ${(paystub.ytdGrossPay || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
       </div>
       <div class="info-item">
         <div class="info-label">YTD Taxes</div>
-        <div class="info-value">$${paystub.ytdTaxes?.toFixed(2) || '0.00'}</div>
+        <div class="info-value">Rs ${(paystub.ytdTaxes || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
       </div>
       <div class="info-item">
         <div class="info-label">YTD Net Pay</div>
-        <div class="info-value">$${paystub.ytdNetPay?.toFixed(2) || '0.00'}</div>
+        <div class="info-value">Rs ${(paystub.ytdNetPay || 0).toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
       </div>
     </div>
   </div>

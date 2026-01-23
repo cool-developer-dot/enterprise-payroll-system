@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import { Employee, type EmploymentType, type EmploymentStatus, type SalaryType } from "@/lib/services/employeeService";
+import { Employee, type EmploymentType, type EmploymentStatus } from "@/lib/services/employeeService";
 import { employeeService } from "@/lib/services/employeeService";
 import { ROLES } from "@/lib/constants/roles";
 
@@ -28,23 +28,19 @@ const statusOptions = [
   { value: "on-leave", label: "On Leave" },
 ];
 
-const salaryTypeOptions = [
-  { value: "monthly", label: "Monthly" },
-  { value: "hourly", label: "Hourly" },
-  { value: "annual", label: "Annual" },
-];
 
 export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmployeeModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     photo: "",
     department: "",
     role: "",
     employmentType: "full-time" as EmploymentType,
     status: "active" as EmploymentStatus,
     joinDate: new Date().toISOString().split("T")[0],
-    salaryType: "monthly" as SalaryType,
+    baseSalary: "",
     contractStart: "",
     contractEnd: "",
   });
@@ -65,33 +61,56 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmpl
     setLoading(true);
     setError(null);
 
+    // Validate password
+    if (!formData.password || formData.password.length < 8) {
+      setError("Password is required and must be at least 8 characters long");
+      setLoading(false);
+      return;
+    }
+
+    // Validate password strength (optional but recommended)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(formData.password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const newEmployee: Omit<Employee, "id"> = {
+      // Validate monthly salary for employee and manager roles
+      if ((formData.role === 'employee' || formData.role === 'manager') && (!formData.baseSalary || parseFloat(formData.baseSalary) <= 0)) {
+        setError("Monthly salary is required and must be a positive number for employees and managers");
+        setLoading(false);
+        return;
+      }
+
+      // Create user with password - password will be hashed by backend
+      await employeeService.addEmployee({
         name: formData.name,
         email: formData.email,
+        password: formData.password,
         photo: formData.photo || undefined,
         department: formData.department,
         role: formData.role,
         employmentType: formData.employmentType,
         status: formData.status,
         joinDate: formData.joinDate,
-        salaryType: formData.salaryType,
+        baseSalary: formData.baseSalary ? parseFloat(formData.baseSalary) : undefined,
         contractStart: formData.contractStart || undefined,
         contractEnd: formData.contractEnd || undefined,
-      };
-
-      await employeeService.addEmployee(newEmployee);
+      });
       
       setFormData({
         name: "",
         email: "",
+        password: "",
         photo: "",
         department: "",
         role: "",
         employmentType: "full-time",
         status: "active",
         joinDate: new Date().toISOString().split("T")[0],
-        salaryType: "monthly",
+        baseSalary: "",
         contractStart: "",
         contractEnd: "",
       });
@@ -153,6 +172,25 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmpl
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-[#0F172A]">
+                Password <span className="text-[#DC2626]">*</span>
+              </label>
+              <Input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Enter password for employee login"
+                required
+                minLength={8}
+              />
+              <p className="text-xs text-[#64748B]">
+                Password must be at least 8 characters long with uppercase, lowercase, and number.
+                <br />
+                <span className="font-medium text-amber-600">Share this password securely with the employee for login.</span>
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -244,24 +282,25 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmpl
                   ))}
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[#0F172A]">
-                  Salary Type <span className="text-[#DC2626]">*</span>
-                </label>
-                <Select
-                  value={formData.salaryType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, salaryType: e.target.value as SalaryType })
-                  }
-                  required
-                >
-                  {salaryTypeOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              {(formData.role === 'employee' || formData.role === 'manager') && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-[#0F172A]">
+                    Monthly Salary (Rs) <span className="text-[#DC2626]">*</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.baseSalary}
+                    onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+                    placeholder="Enter monthly salary"
+                    required
+                  />
+                  <p className="text-xs text-[#64748B]">
+                    Monthly salary in PKR (required for employees and managers)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

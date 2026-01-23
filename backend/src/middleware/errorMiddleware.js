@@ -42,6 +42,52 @@ export const globalErrorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
   
+  // Handle MongoDB connection errors professionally
+  if (err.name === 'MongoServerSelectionError' || 
+      err.name === 'MongoNetworkError' ||
+      err.name === 'MongoTimeoutError' ||
+      err.message?.includes('MongoServerSelectionError')) {
+    err.statusCode = 503; // Service Unavailable
+    err.isOperational = true;
+    if (process.env.NODE_ENV === 'production') {
+      err.message = 'Database service is temporarily unavailable. Please try again later or contact support if the issue persists.';
+    } else {
+      err.message = `Database connection error: ${err.message}`;
+    }
+  }
+  
+  // Handle DNS resolution errors
+  if (err.message?.includes('ENOTFOUND') || 
+      err.message?.includes('getaddrinfo') ||
+      err.message?.includes('DNS resolution failed')) {
+    err.statusCode = 503;
+    err.isOperational = true;
+    if (process.env.NODE_ENV === 'production') {
+      err.message = 'Database service is temporarily unavailable. Please check your network connection and try again later.';
+    } else {
+      err.message = `DNS resolution failed: ${err.message}`;
+      // Log detailed DNS error in development
+      console.error('DNS Resolution Error Details:', {
+        message: err.message,
+        code: err.code,
+        hostname: err.hostname || 'unknown',
+        stack: err.stack?.split('\n').slice(0, 10).join('\n')
+      });
+    }
+  }
+  
+  // Handle MongoDB operation timeouts
+  if (err.message?.includes('operation timed out') || 
+      err.message?.includes('server selection timed out')) {
+    err.statusCode = 503;
+    err.isOperational = true;
+    if (process.env.NODE_ENV === 'production') {
+      err.message = 'Database operation timed out. Please try again later.';
+    } else {
+      err.message = `Database operation timeout: ${err.message}`;
+    }
+  }
+  
   if (process.env.NODE_ENV === 'development') {
     return sendErrorDev(err, res);
   }

@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { employeeService, type Paystub } from "@/lib/services/employeeService";
+import { payrollService } from "@/lib/services/payrollService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function EmployeePaystubsPage() {
   const [loading, setLoading] = useState(true);
@@ -22,10 +24,10 @@ export default function EmployeePaystubsPage() {
     try {
       setLoading(true);
       const result = await employeeService.getPaystubs(1, 100);
-      setPaystubs(result.paystubs);
+      setPaystubs(result.paystubs || []);
     } catch (error: any) {
-      console.error('Failed to load paystubs:', error);
-      alert(error.message || 'Failed to load paystubs');
+      toast.error(error?.message || 'Failed to load paystubs');
+      setPaystubs([]);
     } finally {
       setLoading(false);
     }
@@ -37,7 +39,8 @@ export default function EmployeePaystubsPage() {
       setSelectedPaystubDetail(detail);
       setSelectedStub(id);
     } catch (error: any) {
-      alert(error.message || 'Failed to load paystub details');
+      toast.error(error.message || 'Failed to load paystub details');
+      setSelectedPaystubDetail(null);
     }
   };
 
@@ -71,8 +74,14 @@ export default function EmployeePaystubsPage() {
         <Card className="border border-slate-200 bg-white">
           <CardContent className="py-12">
             <div className="text-center text-[#64748B]">
-              <p className="text-sm mb-2">No pay stubs available</p>
-              <p className="text-xs">Your pay stubs will appear here once processed</p>
+              <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-base font-semibold text-[#0F172A] mb-2">No Pay Stubs Available</p>
+              <p className="text-sm text-[#64748B] max-w-md mx-auto">
+                Your pay stubs will appear here once payroll has been processed for a pay period. 
+                If you believe this is an error, please contact your manager or HR department.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -92,7 +101,7 @@ export default function EmployeePaystubsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <h3 className="text-lg font-bold text-[#0F172A]">
-                          ${stub.netPay.toLocaleString()}
+                          Rs {stub.netPay.toLocaleString()}
                         </h3>
                         <Badge
                           className={
@@ -131,12 +140,14 @@ export default function EmployeePaystubsPage() {
                         variant="outline"
                         size="sm"
                         className="border-slate-200 text-[#64748B] hover:bg-slate-50"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          if (stub.pdfUrl) {
-                            window.open(stub.pdfUrl, '_blank');
-                          } else {
-                            alert('PDF not available for this paystub');
+                          try {
+                            await payrollService.getPaystubPDF(stub.id);
+                            toast.success('Paystub PDF downloaded successfully');
+                          } catch (error: any) {
+                            toast.error(error.message || 'Failed to download PDF');
+                            handleViewPaystub(stub.id);
                           }
                         }}
                       >
@@ -166,20 +177,20 @@ export default function EmployeePaystubsPage() {
                     <div>
                       <p className="text-xs text-[#64748B] mb-1">Gross Pay</p>
                       <p className="text-sm font-semibold text-[#0F172A]">
-                        ${(selectedPaystub.grossPay || 0).toLocaleString()}
+                        Rs {(selectedPaystub.grossPay || 0).toLocaleString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-[#64748B] mb-1">Deductions</p>
                       <p className="text-sm font-semibold text-[#0F172A]">
-                        ${(selectedPaystub.totalDeductions || 0).toLocaleString()}
+                        Rs {(selectedPaystub.totalDeductions || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <div className="pt-4 border-t border-slate-200">
                     <p className="text-xs text-[#64748B] mb-1">Net Pay</p>
                     <p className="text-2xl font-bold text-[#0F172A]">
-                      ${(selectedPaystub.netPay || 0).toLocaleString()}
+                      Rs {(selectedPaystub.netPay || 0).toLocaleString()}
                     </p>
                   </div>
                   {selectedPaystubDetail && (
@@ -187,19 +198,19 @@ export default function EmployeePaystubsPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#64748B]">Earnings</span>
                         <span className="text-xs font-semibold text-[#0F172A]">
-                          ${(selectedPaystubDetail.grossPay || 0).toLocaleString()}
+                          Rs {(selectedPaystubDetail.grossPay || 0).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#64748B]">Taxes</span>
                         <span className="text-xs font-semibold text-[#0F172A]">
-                          ${(selectedPaystubDetail.taxes?.total || 0).toLocaleString()}
+                          Rs {(selectedPaystubDetail.taxes?.total || 0).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-[#64748B]">Other Deductions</span>
                         <span className="text-xs font-semibold text-[#0F172A]">
-                          ${((selectedPaystubDetail.totalDeductions || 0) - (selectedPaystubDetail.taxes?.total || 0)).toLocaleString()}
+                          Rs {((selectedPaystubDetail.totalDeductions || 0) - (selectedPaystubDetail.taxes?.total || 0)).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -207,11 +218,13 @@ export default function EmployeePaystubsPage() {
                   <Button
                     variant="outline"
                     className="w-full border-slate-200 text-[#64748B] hover:bg-slate-50"
-                    onClick={() => {
-                      if (selectedPaystub?.pdfUrl) {
-                        window.open(selectedPaystub.pdfUrl, '_blank');
-                      } else {
-                        alert('PDF not available for this paystub');
+                    onClick={async () => {
+                      if (!selectedPaystub) return;
+                      try {
+                        await payrollService.getPaystubPDF(selectedPaystub.id);
+                        toast.success('Paystub PDF downloaded successfully');
+                      } catch (error: any) {
+                        toast.error(error.message || 'Failed to download PDF');
                       }
                     }}
                   >

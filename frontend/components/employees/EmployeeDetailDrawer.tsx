@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import EmployeeTasks from "./EmployeeTasks";
+import FileList from "@/components/files/FileList";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 interface EmployeeDetailDrawerProps {
   employee: Employee;
@@ -28,6 +30,11 @@ export default function EmployeeDetailDrawer({
   isOpen,
   onClose,
 }: EmployeeDetailDrawerProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const canViewDocuments = isAdmin || isManager; // Admins and managers can view employee documents
+  
   if (!isOpen) return null;
 
   return (
@@ -102,9 +109,9 @@ export default function EmployeeDetailDrawer({
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748B] mb-1">Salary Type</p>
-                  <p className="text-sm font-medium text-[#0F172A] capitalize">
-                    {(employee as any).salaryType || (employee.baseSalary ? "Annual" : employee.hourlyRate ? "Hourly" : "N/A")}
+                  <p className="text-xs text-[#64748B] mb-1">Monthly Salary</p>
+                  <p className="text-sm font-medium text-[#0F172A]">
+                    {employee.baseSalary ? `Rs ${employee.baseSalary.toLocaleString()}` : "N/A"}
                   </p>
                 </div>
               </div>
@@ -169,6 +176,29 @@ export default function EmployeeDetailDrawer({
           </Card>
 
           <EmployeeTasks employeeId={employee.id} />
+
+          {canViewDocuments && (
+            <Card className="border border-slate-200">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Employee Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileList
+                  entityType="employee_document"
+                  entityId={employee.id}
+                  showUpload={false}
+                  onFileDeleted={() => {
+                    // Documents will reload automatically
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex gap-3 pt-4 border-t border-slate-200">
             <Button

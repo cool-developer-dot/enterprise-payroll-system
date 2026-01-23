@@ -9,7 +9,10 @@ import {
   createPerformanceUpdate,
   getPerformanceUpdateById,
   updatePerformanceUpdate,
-  getTeamPerformance
+  getTeamPerformance,
+  getManagerSettings,
+  updateManagerSettings,
+  getManagerSessions
 } from '../services/managerService.js';
 import { sendSuccess, sendPaginated } from '../utils/responseHandler.js';
 import { createPagination } from '../utils/responseHandler.js';
@@ -138,3 +141,39 @@ export const updatePerformanceUpdateEndpoint = async (req, res, next) => {
   }
 };
 
+export const getSettings = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+    const settings = await getManagerSettings(managerId);
+    return sendSuccess(res, 200, 'Settings retrieved successfully', settings);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSettings = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+    const settingsData = req.body;
+    const settings = await updateManagerSettings(managerId, settingsData);
+    
+    logUserAction(req, 'update', 'User', managerId, {
+      action: 'update_manager_settings'
+    });
+
+    return sendSuccess(res, 200, 'Settings updated successfully', settings);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSessions = async (req, res, next) => {
+  try {
+    const managerId = req.user._id;
+    const currentSessionToken = req.headers.authorization?.split(' ')[1] || '';
+    const sessions = await getManagerSessions(managerId, currentSessionToken);
+    return sendSuccess(res, 200, 'Sessions retrieved successfully', { sessions });
+  } catch (error) {
+    next(error);
+  }
+};

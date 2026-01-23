@@ -50,9 +50,9 @@ export default function AdminDepartmentsPage() {
       });
       setDepartments(response.data);
       setTotal(response.pagination.total);
-    } catch (err) {
-      setError("Failed to load departments. Please try again.");
-      console.error(err);
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to load departments. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -123,8 +123,8 @@ export default function AdminDepartmentsPage() {
       setSelectedDepartment(null);
       loadDepartments();
     } catch (err: any) {
-      setError(err.message || "Failed to save department. Please try again.");
-      console.error(err);
+      const errorMessage = err.message || "Failed to save department. Please try again.";
+      setError(errorMessage);
     }
   };
 
@@ -134,8 +134,8 @@ export default function AdminDepartmentsPage() {
       await departmentsApi.deleteDepartment(id);
       loadDepartments();
     } catch (err: any) {
-      setError(err.message || "Failed to delete department. Please try again.");
-      console.error(err);
+      const errorMessage = err.message || "Failed to delete department. Please try again.";
+      setError(errorMessage);
     }
   };
 
@@ -236,7 +236,7 @@ export default function AdminDepartmentsPage() {
                         <td className="py-4 px-4">
                           {dept.annualBudget ? (
                             <span className="text-sm text-[#0F172A]">
-                              ${(dept.annualBudget / 1000000).toFixed(1)}M
+                              Rs {(dept.annualBudget / 1000000).toFixed(1)}M
                             </span>
                           ) : (
                             <span className="text-sm text-[#64748B]">-</span>

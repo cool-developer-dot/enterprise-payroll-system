@@ -21,48 +21,33 @@ const getPayrollSettings = async () => {
 };
 
 export const calculateGrossPay = async (employee, hours, periodStart, periodEnd) => {
-  const settings = await getPayrollSettings();
-  let grossPay = 0;
-
-  if (employee.salaryType === 'monthly' || employee.salaryType === 'annual') {
-    const baseSalary = employee.baseSalary || 0;
-    if (employee.salaryType === 'annual') {
-      grossPay = baseSalary / 12;
-    } else {
-      grossPay = baseSalary;
-    }
-  } else if (employee.salaryType === 'hourly') {
-    const hourlyRate = employee.hourlyRate || 0;
-    const regularHours = hours.regular || 0;
-    const overtimeHours = hours.overtime || 0;
-    
-    grossPay = (regularHours * hourlyRate) + (overtimeHours * hourlyRate * (settings.overtimeRules?.rate || 1.5));
-  }
-
-  return Math.max(0, grossPay);
+  // System uses monthly salary only
+  // For monthly employees, gross pay is the base salary for the pay period
+  const baseSalary = employee.baseSalary || 0;
+  
+  // Calculate the proportion of the month covered by this pay period
+  const startDate = new Date(periodStart);
+  const endDate = new Date(periodEnd);
+  const daysInPeriod = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+  
+  // Get days in the month of the period
+  const year = startDate.getFullYear();
+  const month = startDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  // Calculate prorated monthly salary based on days in period
+  const grossPay = (baseSalary / daysInMonth) * daysInPeriod;
+  
+  return Math.max(0, Math.round(grossPay * 100) / 100);
 };
 
 export const calculateOvertimePay = async (employee, totalHours, regularHours) => {
-  const settings = await getPayrollSettings();
-  
-  if (!settings.overtimeRules?.enabled) {
-    return { overtimeHours: 0, overtimePay: 0 };
-  }
-
-  const threshold = settings.overtimeRules.threshold || 40;
-  const rate = settings.overtimeRules.rate || 1.5;
-  const hourlyRate = employee.hourlyRate || 0;
-
-  if (employee.salaryType !== 'hourly') {
-    return { overtimeHours: 0, overtimePay: 0 };
-  }
-
-  const overtimeHours = Math.max(0, totalHours - threshold);
-  const overtimePay = overtimeHours * hourlyRate * rate;
-
+  // System uses monthly salary only - overtime is not applicable for salaried employees
+  // Overtime calculations are handled through timesheets for additional compensation
+  // For monthly salary employees, base salary is fixed regardless of hours worked
   return {
-    overtimeHours: Math.round(overtimeHours * 100) / 100,
-    overtimePay: Math.round(overtimePay * 100) / 100,
+    overtimeHours: 0,
+    overtimePay: 0,
   };
 };
 
@@ -247,18 +232,23 @@ export const processPayrollForPeriod = async (periodId, processedBy) => {
 
   for (const employee of employees) {
     try {
-      const hours = await getEmployeeHours(employee._id, period.periodStart, period.periodEnd);
-      
-      if (hours.total === 0 && employee.salaryType === 'hourly') {
+      // Skip if employee doesn't have a base salary (monthly salary required)
+      if (!employee.baseSalary || employee.baseSalary <= 0) {
+        console.warn(`Skipping employee ${employee._id} - no monthly salary set`);
         continue;
       }
 
-      const overtime = await calculateOvertimePay(employee, hours.total, hours.regular);
-      const grossPay = await calculateGrossPay(employee, { ...hours, overtime: overtime.overtimeHours }, period.periodStart, period.periodEnd);
+      // System uses monthly salary only - gross pay is prorated based on days in pay period
+      // Hours are tracked for reporting but not used for payroll calculation
+      const hours = await getEmployeeHours(employee._id, period.periodStart, period.periodEnd);
+      const grossPay = await calculateGrossPay(employee, null, period.periodStart, period.periodEnd);
       const taxes = await calculateTaxes(grossPay, employee);
       const deductions = await calculateDeductions(grossPay, employee);
       const netPay = calculateNetPay(grossPay, taxes, deductions);
       const ytd = await calculateYTD(employee._id, period.periodEnd);
+
+      // Monthly salary rate for display purposes
+      const monthlyRate = employee.baseSalary || 0;
 
       const paystub = await PayStub.create({
         employeeId: employee._id,
@@ -268,11 +258,11 @@ export const processPayrollForPeriod = async (periodId, processedBy) => {
         payDate: period.payDate,
         status: 'processing',
         grossPay,
-        regularHours: hours.regular,
-        regularRate: employee.hourlyRate || 0,
-        overtimeHours: overtime.overtimeHours,
-        overtimeRate: (employee.hourlyRate || 0) * 1.5,
-        overtimePay: overtime.overtimePay,
+        regularHours: hours.regular || 0,
+        regularRate: monthlyRate, // Monthly salary rate
+        overtimeHours: 0, // Overtime not applicable for monthly salary employees
+        overtimeRate: 0,
+        overtimePay: 0,
         bonuses: [],
         totalEarnings: grossPay,
         taxes,
@@ -291,9 +281,9 @@ export const processPayrollForPeriod = async (periodId, processedBy) => {
         hours,
         earnings: {
           baseSalary: employee.baseSalary || 0,
-          hourlyRate: employee.hourlyRate || 0,
-          regularPay: (hours.regular * (employee.hourlyRate || 0)),
-          overtimePay: overtime.overtimePay,
+          hourlyRate: 0, // Not applicable - system uses monthly salary only
+          regularPay: grossPay, // For monthly employees, regular pay equals gross pay
+          overtimePay: 0, // Overtime not applicable for monthly salary employees
           bonuses: [],
           allowances: [],
           totalEarnings: grossPay,

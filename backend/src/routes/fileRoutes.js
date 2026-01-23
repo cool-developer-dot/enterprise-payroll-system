@@ -21,7 +21,7 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.post('/upload', uploadLimiter, validateUploadFile, handleValidationErrors, uploadSingle('file'), uploadFile);
+router.post('/upload', uploadLimiter, uploadSingle('file'), validateUploadFile, handleValidationErrors, uploadFile);
 router.get('/by-entity', validateGetFilesByEntity, handleValidationErrors, getFilesByEntityEndpoint);
 router.get('/:id', validateFileId, handleValidationErrors, getFile);
 router.get('/:id/download', validateFileId, handleValidationErrors, downloadFile);

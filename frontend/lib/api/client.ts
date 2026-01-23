@@ -48,9 +48,9 @@ class ApiClient {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
-          // Don't redirect on login/register pages
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = '/login';
+          // Don't redirect on login/register pages or home page
+          if (!window.location.pathname.includes('/login') && window.location.pathname !== '/') {
+            window.location.href = '/';
           }
         }
       }

@@ -9,6 +9,7 @@ import { taskService, type Task, type TaskStatus } from "@/lib/services/taskServ
 import { useAuth } from "@/lib/contexts/AuthContext";
 import FileList from "@/components/files/FileList";
 import Link from "next/link";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerTaskDetailPage() {
   const params = useParams();
@@ -30,14 +31,14 @@ export default function ManagerTaskDetailPage() {
       setLoading(true);
       const taskData = await taskService.getTask(taskId);
       if (!taskData) {
-        alert('Task not found');
+        toast.error('Task not found');
         router.push('/manager');
         return;
       }
       setTask(taskData);
     } catch (error: any) {
-      console.error('Failed to load task:', error);
-      alert(error.message || 'Failed to load task');
+      const errorMessage = error.message || 'Failed to load task';
+      toast.error(errorMessage);
       router.push('/manager');
     } finally {
       setLoading(false);
@@ -51,10 +52,9 @@ export default function ManagerTaskDetailPage() {
       setUpdating(true);
       await taskService.updateTaskStatus(task.id, newStatus);
       await loadTask();
-      alert(`Task status updated to ${newStatus} successfully!`);
+      toast.success(`Task status updated to ${newStatus} successfully!`);
     } catch (error: any) {
-      console.error('Error updating task status:', error);
-      alert(error.message || 'Failed to update task status');
+      toast.error(error.message || 'Failed to update task status');
     } finally {
       setUpdating(false);
     }

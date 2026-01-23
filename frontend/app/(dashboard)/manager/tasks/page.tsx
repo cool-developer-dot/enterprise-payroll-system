@@ -9,6 +9,7 @@ import Select from "@/components/ui/Select";
 import Link from "next/link";
 import { taskService, type Task, type TaskStatus, type TaskPriority, type TaskFilters, type TaskSort } from "@/lib/services/taskService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -50,10 +51,8 @@ export default function ManagerTasksPage() {
     setLoading(true);
     setError(null);
     try {
-      console.log("Manager loading tasks with filters:", filters, "page:", page);
       const result = await taskService.getTasks(filters, sort, page, pageSize);
       const tasksList = Array.isArray(result.data) ? result.data : [];
-      console.log("Manager tasks loaded:", tasksList.length, "total:", result.total);
       setTasks(tasksList);
       setTotal(result.total || 0);
       
@@ -77,12 +76,10 @@ export default function ManagerTasksPage() {
       };
       setStats(statsData);
     } catch (err: any) {
-      console.error("Error loading manager tasks:", err);
       const errorMessage = err?.message || err?.response?.data?.message || "Failed to load tasks. Please try again.";
       
       // Retry logic for network errors
       if (retryCount < 2 && (errorMessage.includes('fetch') || errorMessage.includes('network') || errorMessage.includes('Failed to fetch'))) {
-        console.log(`Retrying loadTasks (attempt ${retryCount + 1})...`);
         setTimeout(() => {
           loadTasks(retryCount + 1);
         }, 1000 * (retryCount + 1)); // Exponential backoff

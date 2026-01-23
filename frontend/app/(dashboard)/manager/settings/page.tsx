@@ -7,36 +7,164 @@ import Input from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
 import Select from "@/components/ui/Select";
 import Link from "next/link";
+import { managerService } from "@/lib/services/managerService";
+import type { ManagerSettings, Session } from "@/lib/api/manager";
 
 export default function ManagerSettingsPage() {
-  const [name, setName] = useState("John Manager");
-  const [email] = useState("john.manager@company.com");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  
+  const [settings, setSettings] = useState<ManagerSettings | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Local state for form fields
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [approvalNotifications, setApprovalNotifications] = useState(true);
   const [defaultPeriod, setDefaultPeriod] = useState("current-month");
-  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+    loadSessions();
+  }, []);
+
+  const loadSettings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await managerService.getSettings();
+      setSettings(data);
+      setName(data.profile.name);
+      setEmail(data.profile.email);
+      setRole(data.profile.role);
+      setEmailNotifications(data.preferences.emailNotifications);
+      setApprovalNotifications(data.preferences.approvalNotifications);
+      setDefaultPeriod(data.preferences.defaultPeriod || "current-month");
+      setHasChanges(false);
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to load settings. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const data = await managerService.getSessions();
+      setSessions(data);
+    } catch (err) {
+      setSessions([]);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!settings) return;
+
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const updateData = {
+        name: name !== settings.profile.name ? name : undefined,
+        preferences: {
+          emailNotifications: emailNotifications !== settings.preferences.emailNotifications 
+            ? emailNotifications 
+            : undefined,
+          approvalNotifications: approvalNotifications !== settings.preferences.approvalNotifications 
+            ? approvalNotifications 
+            : undefined,
+          defaultPeriod: defaultPeriod !== settings.preferences.defaultPeriod 
+            ? defaultPeriod 
+            : undefined,
+        },
+      };
+
+      // Remove undefined values
+      if (updateData.preferences) {
+        Object.keys(updateData.preferences).forEach(key => {
+          if (updateData.preferences![key as keyof typeof updateData.preferences] === undefined) {
+            delete updateData.preferences![key as keyof typeof updateData.preferences];
+          }
+        });
+        if (Object.keys(updateData.preferences).length === 0) {
+          delete updateData.preferences;
+        }
+      }
+
+      if (!updateData.name && !updateData.preferences) {
+        setError("No changes to save");
+        setSaving(false);
+        return;
+      }
+
+      const updatedSettings = await managerService.updateSettings(updateData);
+      setSettings(updatedSettings);
+      setHasChanges(false);
+      setSuccess("Settings saved successfully!");
+      setTimeout(() => setSuccess(null), 3000);
+      
+      // Reload sessions to get updated info
+      await loadSessions();
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to save settings. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handlePreferenceChange = () => {
     setHasChanges(true);
   };
 
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] mb-2">Manager Settings</h1>
+          <p className="text-sm sm:text-base text-[#64748B]">
+            Manage your profile, preferences, and security settings
+          </p>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-[#64748B]">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  const loadSessions = async () => {
-    setLoadingSessions(true);
-    try {
-      setSessions([]);
-    } catch (error) {
-      console.error('Failed to load sessions:', error);
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
+  if (!settings) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] mb-2">Manager Settings</h1>
+          <p className="text-sm sm:text-base text-[#64748B]">
+            Manage your profile, preferences, and security settings
+          </p>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-red-600">Failed to load settings. Please try again.</p>
+          <Button
+            onClick={loadSettings}
+            className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-0">
@@ -46,6 +174,18 @@ export default function ManagerSettingsPage() {
           Manage your profile, preferences, and security settings
         </p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          {success}
+        </div>
+      )}
 
       <Card className="border border-slate-200 bg-white">
         <CardHeader>
@@ -70,7 +210,7 @@ export default function ManagerSettingsPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-[#0F172A]">Role:</span>
             <Badge className="bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]/20">
-              Manager
+              {role.charAt(0).toUpperCase() + role.slice(1)}
             </Badge>
           </div>
         </CardContent>
@@ -149,14 +289,6 @@ export default function ManagerSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <Button
-              variant="outline"
-              className="border-[#2563EB]/20 text-[#2563EB] hover:bg-[#2563EB]/5"
-            >
-              Change Password
-            </Button>
-          </div>
-          <div>
             <h3 className="text-sm font-semibold text-[#0F172A] mb-4">Active Sessions</h3>
             {loadingSessions ? (
               <div className="text-center py-8 text-[#64748B]">
@@ -168,9 +300,9 @@ export default function ManagerSettingsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {sessions.map((session, idx) => (
+                {sessions.map((session) => (
                   <div
-                    key={idx}
+                    key={session._id}
                     className="flex items-center justify-between p-3 border border-slate-200 rounded-lg"
                   >
                     <div className="flex-1">
@@ -195,11 +327,11 @@ export default function ManagerSettingsPage() {
       <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200">
         <Button
           variant="gradient"
-          disabled={!hasChanges}
+          disabled={!hasChanges || saving}
           className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => setHasChanges(false)}
+          onClick={handleSave}
         >
-          Save Changes
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
         <Link href="/login" className="flex-1 sm:flex-none">
           <Button

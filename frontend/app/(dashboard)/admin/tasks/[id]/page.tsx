@@ -9,6 +9,7 @@ import { taskService, type Task, type TaskStatus } from "@/lib/services/taskServ
 import { useAuth } from "@/lib/contexts/AuthContext";
 import FileList from "@/components/files/FileList";
 import Link from "next/link";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function AdminTaskDetailPage() {
   const params = useParams();
@@ -31,14 +32,14 @@ export default function AdminTaskDetailPage() {
       setLoading(true);
       const taskData = await taskService.getTask(taskId);
       if (!taskData) {
-        alert('Task not found');
+        toast.error('Task not found');
         router.push('/admin/tasks');
         return;
       }
       setTask(taskData);
     } catch (error: any) {
-      console.error('Failed to load task:', error);
-      alert(error.message || 'Failed to load task');
+      const errorMessage = error.message || 'Failed to load task';
+      toast.error(errorMessage);
       router.push('/admin/tasks');
     } finally {
       setLoading(false);
@@ -52,10 +53,9 @@ export default function AdminTaskDetailPage() {
       setUpdating(true);
       await taskService.updateTaskStatus(task.id, newStatus);
       await loadTask();
-      alert(`Task status updated to ${newStatus} successfully!`);
+      toast.success(`Task status updated to ${newStatus} successfully!`);
     } catch (error: any) {
-      console.error('Error updating task status:', error);
-      alert(error.message || 'Failed to update task status');
+      toast.error(error.message || 'Failed to update task status');
     } finally {
       setUpdating(false);
     }
@@ -71,11 +71,10 @@ export default function AdminTaskDetailPage() {
     try {
       setDeleting(true);
       await taskService.deleteTask(task.id);
-      alert('Task deleted successfully!');
+      toast.success('Task deleted successfully!');
       router.push('/admin/tasks');
     } catch (error: any) {
-      console.error('Error deleting task:', error);
-      alert(error.message || 'Failed to delete task');
+      toast.error(error.message || 'Failed to delete task');
     } finally {
       setDeleting(false);
     }

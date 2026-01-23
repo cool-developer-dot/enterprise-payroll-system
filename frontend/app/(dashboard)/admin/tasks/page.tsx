@@ -9,6 +9,7 @@ import Select from "@/components/ui/Select";
 import Link from "next/link";
 import { taskService, type Task, type TaskStatus, type TaskPriority, type TaskFilters, type TaskSort } from "@/lib/services/taskService";
 import { usersApi } from "@/lib/api/users";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function AdminTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -41,11 +42,6 @@ export default function AdminTasksPage() {
     loadTasks();
   }, [filters, sort, page]);
 
-  // Debug: Log when component mounts
-  useEffect(() => {
-    console.log("Admin tasks page mounted, loading tasks...");
-  }, []);
-
   const loadEmployees = async () => {
     setLoadingEmployees(true);
     try {
@@ -54,15 +50,14 @@ export default function AdminTasksPage() {
       const employeesList = Array.isArray(response.data) ? response.data : [];
       setEmployees(employeesList);
       if (employeesList.length === 0) {
-        console.warn("No active employees found. Please register employees first.");
+        toast.warning("No active employees found. Please register employees first.");
       }
     } catch (err: any) {
-      console.error("Failed to load employees:", err);
       setEmployees([]);
       const errorMessage = err?.message || err?.toString() || "Unknown error";
-      // Only show alert if it's not a validation error (which is handled by the backend)
+      // Only show toast if it's not a validation error (which is handled by the backend)
       if (!errorMessage.includes("charAt") && !errorMessage.includes("Cannot read properties")) {
-        alert(`Failed to load employees: ${errorMessage}`);
+        toast.error(`Failed to load employees: ${errorMessage}`);
       }
     } finally {
       setLoadingEmployees(false);
@@ -73,14 +68,13 @@ export default function AdminTasksPage() {
     setLoading(true);
     setError(null);
     try {
-      console.log("Admin loading tasks with filters:", filters, "page:", page);
       const result = await taskService.getTasks(filters, sort, page, pageSize);
-      console.log("Admin tasks loaded:", result.data?.length || 0, "total:", result.total);
       setTasks(result.data || []);
       setTotal(result.total || 0);
     } catch (err: any) {
-      console.error("Error loading tasks:", err);
-      setError(err?.message || "Failed to load tasks. Please try again.");
+      const errorMessage = err?.message || "Failed to load tasks. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -88,7 +82,7 @@ export default function AdminTasksPage() {
 
   const handleCreateTask = async () => {
     if (!createData.employeeId || !createData.title || !createData.dueDate) {
-      alert("Please fill in all required fields");
+      toast.warning("Please fill in all required fields");
       return;
     }
 
@@ -111,15 +105,12 @@ export default function AdminTasksPage() {
         dueDate: "",
         estimatedHours: "",
       });
-      // Show success message
-      alert("Task created successfully and assigned to employee!");
-      // Reset page to 1 and reload tasks
+      toast.success("Task created successfully and assigned to employee!");
       setPage(1);
       await loadTasks();
     } catch (error: any) {
-      console.error("Error creating task:", error);
       const errorMessage = error?.message || error?.response?.data?.message || "Failed to create task. Please try again.";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -129,9 +120,10 @@ export default function AdminTasksPage() {
     if (!confirm("Are you sure you want to delete this task?")) return;
     try {
       await taskService.deleteTask(id);
+      toast.success("Task deleted successfully");
       await loadTasks();
     } catch (error: any) {
-      alert(error.message || "Failed to delete task");
+      toast.error(error.message || "Failed to delete task");
     }
   };
 

@@ -28,17 +28,17 @@ router.use(authenticate);
 // Get timezones (available to all authenticated users)
 router.get('/timezones', getTimezones);
 
-// Admin-only routes (with caching)
+// Admin/Manager-only routes (with caching)
 router.get(
   '/',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   cacheMiddleware(300), // Cache for 5 minutes
   getAllSettings
 );
 
 router.get(
   '/:type',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   validateGetSettings,
   handleValidationErrors,
   cacheMiddleware(300), // Cache for 5 minutes
@@ -47,7 +47,7 @@ router.get(
 
 router.put(
   '/company',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   validateCompanySettings,
   handleValidationErrors,
   updateCompanySettings
@@ -55,7 +55,7 @@ router.put(
 
 router.put(
   '/payroll',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   validatePayrollSettings,
   handleValidationErrors,
   updatePayrollSettings
@@ -63,7 +63,7 @@ router.put(
 
 router.put(
   '/attendance',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   validateAttendanceSettings,
   handleValidationErrors,
   updateAttendanceSettings
@@ -71,7 +71,7 @@ router.put(
 
 router.put(
   '/leave-policies',
-  authorize('admin'),
+  authorize('admin', 'manager'),
   validateLeavePolicies,
   handleValidationErrors,
   updateLeavePolicies

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { fileService, type FileAttachment } from "@/lib/services/fileService";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import FileUpload from "./FileUpload";
@@ -21,9 +22,26 @@ export default function FileList({
   showUpload = true,
   onUploadSuccess,
 }: FileListProps) {
+  const { user } = useAuth();
   const [files, setFiles] = useState<FileAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  
+  // Check if user can delete files
+  const canDeleteFile = (file: FileAttachment) => {
+    if (!user) return false;
+    const isAdmin = user.role === 'admin';
+    const isManager = user.role === 'manager';
+    const isUploader = file.uploadedBy === user.id || (file.uploadedBy as any)?._id === user.id;
+    
+    // Admin and manager can delete any file
+    if (isAdmin || isManager) return true;
+    
+    // User can delete their own files
+    if (isUploader) return true;
+    
+    return false;
+  };
 
   useEffect(() => {
     loadFiles();
@@ -132,7 +150,7 @@ export default function FileList({
                 >
                   Download
                 </Button>
-                {file.status !== 'deleted' && (
+                {file.status !== 'deleted' && canDeleteFile(file) && (
                   <Button
                     variant="outline"
                     size="sm"

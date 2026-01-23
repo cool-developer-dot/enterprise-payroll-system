@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import { managerService } from "@/lib/services/managerService";
 import { timesheetService } from "@/lib/services/timesheetService";
 import { leaveService } from "@/lib/services/leaveService";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerApprovalsPage() {
   const [loading, setLoading] = useState(true);
@@ -36,8 +37,8 @@ export default function ManagerApprovalsPage() {
       setPendingTimesheets(timesheetsResult.timesheets || []);
       setPendingLeaveRequests(leaveResult.leaveRequests || []);
     } catch (error: any) {
-      console.error('Failed to load approvals:', error);
-      alert(error?.message || 'Failed to load pending approvals. Please try again.');
+      const errorMessage = error?.message || 'Failed to load pending approvals. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -50,9 +51,10 @@ export default function ManagerApprovalsPage() {
       setComment('');
       setShowApproveModal(false);
       setSelectedTimesheetIds([]);
+      toast.success('Timesheet approved successfully!');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to approve timesheet');
+      toast.error(error.message || 'Failed to approve timesheet');
     } finally {
       setActionLoading(null);
     }
@@ -60,7 +62,7 @@ export default function ManagerApprovalsPage() {
 
   const handleRejectTimesheet = async (id: string) => {
     if (!rejectReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.warning('Please provide a rejection reason');
       return;
     }
     try {
@@ -68,9 +70,10 @@ export default function ManagerApprovalsPage() {
       await timesheetService.rejectTimesheet(id, rejectReason);
       setRejectReason('');
       setShowRejectModal(false);
+      toast.success('Timesheet rejected successfully');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to reject timesheet');
+      toast.error(error.message || 'Failed to reject timesheet');
     } finally {
       setActionLoading(null);
     }
@@ -83,9 +86,10 @@ export default function ManagerApprovalsPage() {
       setComment('');
       setShowApproveModal(false);
       setSelectedLeaveIds([]);
+      toast.success('Leave request approved successfully!');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to approve leave request');
+      toast.error(error.message || 'Failed to approve leave request');
     } finally {
       setActionLoading(null);
     }
@@ -93,7 +97,7 @@ export default function ManagerApprovalsPage() {
 
   const handleRejectLeave = async (id: string) => {
     if (!rejectReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.warning('Please provide a rejection reason');
       return;
     }
     try {
@@ -101,9 +105,10 @@ export default function ManagerApprovalsPage() {
       await leaveService.rejectLeaveRequest(id, rejectReason);
       setRejectReason('');
       setShowRejectModal(false);
+      toast.success('Leave request rejected successfully');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to reject leave request');
+      toast.error(error.message || 'Failed to reject leave request');
     } finally {
       setActionLoading(null);
     }

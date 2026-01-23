@@ -70,11 +70,11 @@ router.get(
 
 /**
  * POST /api/projects - Create project
- * Access: Admin only
+ * Access: Admin and Manager
  */
 router.post(
   '/',
-  authorize(['admin']),
+  authorize(['admin', 'manager']),
   validateCreateProject,
   handleValidationErrors,
   createProjectEndpoint
@@ -82,11 +82,11 @@ router.post(
 
 /**
  * PUT /api/projects/:id - Update project
- * Access: Admin only
+ * Access: Admin and Manager
  */
 router.put(
   '/:id',
-  authorize(['admin']),
+  authorize(['admin', 'manager']),
   validateUpdateProject,
   handleValidationErrors,
   updateProjectEndpoint
@@ -94,11 +94,11 @@ router.put(
 
 /**
  * DELETE /api/projects/:id - Delete project
- * Access: Admin only
+ * Access: Admin and Manager
  */
 router.delete(
   '/:id',
-  authorize(['admin']),
+  authorize(['admin', 'manager']),
   validateProjectId,
   handleValidationErrors,
   deleteProjectEndpoint
@@ -106,11 +106,11 @@ router.delete(
 
 /**
  * POST /api/projects/:id/connect - Test connection
- * Access: Admin only
+ * Access: Admin and Manager
  */
 router.post(
   '/:id/connect',
-  authorize(['admin']),
+  authorize(['admin', 'manager']),
   validateProjectId,
   validateConnectionTest,
   handleValidationErrors,
@@ -119,11 +119,11 @@ router.post(
 
 /**
  * POST /api/projects/:id/sync - Sync project data
- * Access: Admin only
+ * Access: Admin and Manager
  */
 router.post(
   '/:id/sync',
-  authorize(['admin']),
+  authorize(['admin', 'manager']),
   validateProjectId,
   handleValidationErrors,
   syncProject

@@ -22,9 +22,9 @@ export default function KpiCard({
 }: KpiCardProps) {
   const formatValue = (val: string | number): string => {
     if (typeof val === "number") {
-      if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
-      if (val >= 1000) return `$${(val / 1000).toFixed(1)}K`;
-      return val.toString();
+      if (val >= 1000000) return `Rs ${(val / 1000000).toFixed(1)}M`;
+      if (val >= 1000) return `Rs ${(val / 1000).toFixed(1)}K`;
+      return `Rs ${val.toLocaleString()}`;
     }
     return val;
   };

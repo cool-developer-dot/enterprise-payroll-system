@@ -3,20 +3,32 @@ import Button from "@/components/ui/Button";
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] p-8">
-      <div className="w-full max-w-4xl space-y-12">
+    <div className="relative flex min-h-screen flex-col items-center justify-center p-8 overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/background (2).png')",
+          backgroundAttachment: 'fixed',
+        }}
+      />
+      {/* Subtle overlay for better content readability while preserving background beauty */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-white/50 via-white/40 to-white/50" />
+      
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-4xl space-y-12">
         <div className="text-center space-y-6">
           <div className="flex justify-center mb-6">
-            <div className="h-32 w-32 rounded-3xl flex items-center justify-center shadow-glow-lg overflow-hidden bg-white p-4">
+            <div className="h-64 w-64 flex items-center justify-center">
               <img 
                 src="/payroll logo.png" 
-                alt="InsightPayroll Logo" 
-                className="w-full h-full object-contain"
+                alt="MeeTech Labs Management system Logo" 
+                className="w-full h-full object-contain drop-shadow-2xl"
               />
             </div>
           </div>
           <h1 className="text-6xl font-bold text-[#0F172A]">
-            Payroll System
+            MeeTech Labs Management system
           </h1>
           <p className="text-xl text-[#64748B] max-w-2xl mx-auto">
             Enterprise Workforce Management Platform
@@ -32,11 +44,12 @@ export default function HomePage() {
               Sign In
             </Button>
           </Link>
-          <Link href="/login" className="w-full sm:w-auto">
-            <Button className="w-full sm:w-48" size="lg" variant="gradient">
-              Sign Up
-            </Button>
-          </Link>
+        </div>
+        <div className="mt-4 text-center">
+          <p className="text-sm text-[#64748B] max-w-md mx-auto">
+            Need access to the system? Please contact your system administrator to receive your login credentials.
+            Only administrators can create user accounts for security purposes.
+          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
           <div className="p-6 rounded-2xl glass-effect">

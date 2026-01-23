@@ -108,13 +108,26 @@ export const timesheetApi = {
   },
 
   async getTimesheetById(id: string): Promise<TimesheetResponse> {
-    const response = await apiClient.get<{ success: boolean; message: string; data: { timesheet: any } }>(
-      `/timesheets/${id}`
-    );
-    return {
-      ...response,
-      data: { timesheet: transformTimesheet(response.data.timesheet) },
-    };
+    try {
+      const response = await apiClient.get<{ success: boolean; message: string; data: { timesheet: any } }>(
+        `/timesheets/${id}`
+      );
+      if (!response || !response.success || !response.data || !response.data.timesheet) {
+        throw new Error(response?.message || 'Timesheet not found');
+      }
+      return {
+        ...response,
+        data: { timesheet: transformTimesheet(response.data.timesheet) },
+      };
+    } catch (error: any) {
+      if (error.message?.includes('404') || error.message?.includes('not found') || error.message?.includes('ResourceNotFound')) {
+        throw new Error('Timesheet not found');
+      }
+      if (error.message?.includes('403') || error.message?.includes('permission') || error.message?.includes('AccessDenied')) {
+        throw new Error('You do not have permission to view this timesheet');
+      }
+      throw error;
+    }
   },
 
   async createTimesheet(data: {

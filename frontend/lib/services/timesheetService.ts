@@ -26,8 +26,21 @@ export const timesheetService = {
   },
 
   async getTimesheetById(id: string): Promise<Timesheet> {
-    const response = await timesheetApi.getTimesheetById(id);
-    return response.data.timesheet;
+    try {
+      const response = await timesheetApi.getTimesheetById(id);
+      if (!response || !response.data || !response.data.timesheet) {
+        throw new Error('Timesheet not found');
+      }
+      return response.data.timesheet;
+    } catch (error: any) {
+      if (error.message?.includes('404') || error.message?.includes('not found') || error.message?.includes('ResourceNotFound')) {
+        throw new Error('Timesheet not found');
+      }
+      if (error.message?.includes('403') || error.message?.includes('permission') || error.message?.includes('AccessDenied')) {
+        throw new Error('You do not have permission to view this timesheet');
+      }
+      throw error;
+    }
   },
 
   async createTimesheet(data: {

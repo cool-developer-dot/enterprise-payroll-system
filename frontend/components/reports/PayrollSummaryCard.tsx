@@ -11,11 +11,11 @@ interface PayrollSummaryCardProps {
 
 export default function PayrollSummaryCard({ data, onExport }: PayrollSummaryCardProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-PK", {
       style: "currency",
-      currency: "USD",
+      currency: "PKR",
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount).replace('PKR', 'Rs');
   };
 
   return (

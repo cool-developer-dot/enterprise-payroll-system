@@ -38,7 +38,7 @@ export default function ManageLeavePage() {
         const fetchedDepartments = await leaveService.getDepartments();
         setDepartments(fetchedDepartments);
       } catch (err) {
-        console.error("Failed to fetch departments:", err);
+        // Error handled silently - departments filter will be empty
       }
     };
     fetchDepartments();
@@ -54,7 +54,6 @@ export default function ManageLeavePage() {
     } catch (err: any) {
       const errorMessage = err?.message || "Failed to load leave requests. Please try again.";
       setError(errorMessage);
-      console.error("Error loading leave requests:", err);
     } finally {
       setLoading(false);
     }
@@ -134,9 +133,9 @@ export default function ManageLeavePage() {
       setSelectedIds([]);
       setDetailModalOpen(false);
       await loadLeaveRequests();
-    } catch (err) {
-      setError("Failed to process request. Please try again.");
-      console.error(err);
+    } catch (err: any) {
+      const errorMessage = err?.message || "Failed to process request. Please try again.";
+      setError(errorMessage);
     } finally {
       setActionLoading(null);
     }

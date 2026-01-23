@@ -16,7 +16,7 @@ export const getDefaultSettings = (type) => {
         city: '',
         state: '',
         zipCode: '',
-        country: 'USA',
+        country: 'Pakistan',
       },
       contact: {
         phone: '',
@@ -25,7 +25,7 @@ export const getDefaultSettings = (type) => {
       },
       taxId: '',
       registrationNumber: '',
-      timezone: 'America/New_York',
+      timezone: 'Asia/Karachi',
       workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
       fiscalYearStart: new Date(new Date().getFullYear(), 0, 1), // January 1st
     },

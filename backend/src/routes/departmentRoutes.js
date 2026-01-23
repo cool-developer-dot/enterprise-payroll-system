@@ -27,10 +27,10 @@ router.get('/', validateDepartmentQuery, handleValidationErrors, getDepartments)
 router.get('/:id', validateDepartmentId, handleValidationErrors, getDepartmentById);
 router.get('/:id/employees', validateDepartmentId, handleValidationErrors, getDepartmentEmployees);
 
-// Admin-only routes
-router.post('/', authorize('admin'), validateCreateDepartment, handleValidationErrors, createDepartment);
-router.put('/:id', authorize('admin'), validateUpdateDepartment, handleValidationErrors, updateDepartment);
-router.delete('/:id', authorize('admin'), validateDepartmentId, handleValidationErrors, deleteDepartment);
+// Admin/Manager-only routes
+router.post('/', authorize('admin', 'manager'), validateCreateDepartment, handleValidationErrors, createDepartment);
+router.put('/:id', authorize('admin', 'manager'), validateUpdateDepartment, handleValidationErrors, updateDepartment);
+router.delete('/:id', authorize('admin', 'manager'), validateDepartmentId, handleValidationErrors, deleteDepartment);
 
 export default router;
 

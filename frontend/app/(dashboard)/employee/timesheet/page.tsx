@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import { timesheetService, type Timesheet } from "@/lib/services/timesheetService";
 import { employeeService } from "@/lib/services/employeeService";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function EmployeeTimesheetPage() {
   const [loading, setLoading] = useState(true);
@@ -36,8 +37,7 @@ export default function EmployeeTimesheetPage() {
       setCurrentPeriod(data.period);
       setTimesheets(data.timesheets || []);
     } catch (error: any) {
-      console.error('Failed to load timesheets:', error);
-      alert(error.message || 'Failed to load timesheets');
+      toast.error(error.message || 'Failed to load timesheets');
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export default function EmployeeTimesheetPage() {
 
   const handleCreateEntry = async () => {
     if (!user?.id || !newEntry.date || newEntry.hours < 0 || newEntry.hours > 24) {
-      alert('Please enter valid date and hours (0-24)');
+      toast.warning('Please enter valid date and hours (0-24)');
       return;
     }
 
@@ -68,9 +68,10 @@ export default function EmployeeTimesheetPage() {
         comments: '',
       });
       setShowAddModal(false);
+      toast.success('Timesheet entry created successfully');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to create timesheet entry');
+      toast.error(error.message || 'Failed to create timesheet entry');
     } finally {
       setSaving(null);
     }
@@ -78,7 +79,7 @@ export default function EmployeeTimesheetPage() {
 
   const handleUpdateHours = async (id: string, hours: number) => {
     if (hours < 0 || hours > 24) {
-      alert('Hours must be between 0 and 24');
+      toast.warning('Hours must be between 0 and 24');
       return;
     }
 
@@ -87,7 +88,7 @@ export default function EmployeeTimesheetPage() {
       await timesheetService.updateTimesheet(id, { hours });
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to update timesheet');
+      toast.error(error.message || 'Failed to update timesheet');
     } finally {
       setSaving(null);
     }
@@ -101,10 +102,10 @@ export default function EmployeeTimesheetPage() {
     try {
       setSubmitting(true);
       await employeeService.submitTimesheet([id]);
-      alert('Timesheet submitted successfully');
+      toast.success('Timesheet submitted successfully');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to submit timesheet');
+      toast.error(error.message || 'Failed to submit timesheet');
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +114,7 @@ export default function EmployeeTimesheetPage() {
   const handleBulkSubmit = async () => {
     const draftTimesheets = timesheets.filter(ts => ts.status === 'draft' && ts.hours > 0);
     if (draftTimesheets.length === 0) {
-      alert('No draft timesheets to submit');
+      toast.warning('No draft timesheets to submit');
       return;
     }
 
@@ -125,10 +126,10 @@ export default function EmployeeTimesheetPage() {
       setSubmitting(true);
       const timesheetIds = draftTimesheets.map(ts => ts.id);
       await employeeService.submitTimesheet(timesheetIds);
-      alert('Timesheets submitted successfully');
+      toast.success(`${draftTimesheets.length} timesheet(s) submitted successfully`);
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to submit timesheets');
+      toast.error(error.message || 'Failed to submit timesheets');
     } finally {
       setSubmitting(false);
     }

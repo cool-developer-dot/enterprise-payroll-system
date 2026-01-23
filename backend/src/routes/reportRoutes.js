@@ -28,7 +28,7 @@ router.use(authenticate);
 // Quick report endpoints (no stored reports, just data)
 router.get(
   '/payroll-summary',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateDateRange,
   handleValidationErrors,
   getPayrollSummary
@@ -36,7 +36,7 @@ router.get(
 
 router.get(
   '/attendance-overview',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateDateRange,
   handleValidationErrors,
   getAttendanceOverview
@@ -44,7 +44,7 @@ router.get(
 
 router.get(
   '/leave-analytics',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateDateRange,
   handleValidationErrors,
   getLeaveAnalytics
@@ -52,7 +52,7 @@ router.get(
 
 router.get(
   '/department-costs',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateDateRange,
   handleValidationErrors,
   getDepartmentCosts
@@ -61,7 +61,7 @@ router.get(
 // Report generation and management
 router.post(
   '/generate',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateGenerateReport,
   handleValidationErrors,
   generateReportEndpoint
@@ -70,7 +70,7 @@ router.post(
 // List and view reports
 router.get(
   '/',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateGetReports,
   handleValidationErrors,
   getReports
@@ -78,7 +78,7 @@ router.get(
 
 router.get(
   '/:id',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateReportId,
   handleValidationErrors,
   getReportById
@@ -87,7 +87,7 @@ router.get(
 // File downloads with cache headers
 router.get(
   '/:id/pdf',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateReportId,
   handleValidationErrors,
   getReportPDF
@@ -95,7 +95,7 @@ router.get(
 
 router.get(
   '/:id/excel',
-  authorize('admin', 'manager'),
+  authorize('admin', 'manager', 'dept_lead'),
   validateReportId,
   handleValidationErrors,
   getReportExcel

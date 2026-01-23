@@ -7,10 +7,15 @@ import Button from "@/components/ui/Button";
 import Link from "next/link";
 import { managerService } from "@/lib/services/managerService";
 import type { TeamMember } from "@/lib/api/manager";
+import EmployeeDetailDrawer from "@/components/employees/EmployeeDetailDrawer";
+import { employeeService, type Employee } from "@/lib/services/employeeService";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerTeamPage() {
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     teamMembers: 0,
     directReports: 0,
@@ -35,8 +40,8 @@ export default function ManagerTeamPage() {
         pendingApprovals: approvals.total,
       });
     } catch (error: any) {
-      console.error('Failed to load team data:', error);
-      alert(error?.message || 'Failed to load team data. Please try again.');
+      const errorMessage = error?.message || 'Failed to load team data. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -149,6 +154,24 @@ export default function ManagerTeamPage() {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const employee = await employeeService.getEmployee(member.id || member._id);
+                                if (employee) {
+                                  setSelectedEmployee(employee);
+                                  setIsDrawerOpen(true);
+                                }
+                              } catch (error: any) {
+                                toast.error(error.message || 'Failed to load employee details');
+                              }
+                            }}
+                            className="text-xs border-[#9333EA]/20 text-[#9333EA] hover:bg-[#9333EA]/5"
+                          >
+                            View Details
+                          </Button>
                           <Link href={`/manager/approvals?employeeId=${member.id || member._id}`}>
                             <Button
                               variant="outline"
@@ -168,6 +191,17 @@ export default function ManagerTeamPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedEmployee && (
+        <EmployeeDetailDrawer
+          employee={selectedEmployee}
+          isOpen={isDrawerOpen}
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setSelectedEmployee(null);
+          }}
+        />
+      )}
     </div>
   );
 }

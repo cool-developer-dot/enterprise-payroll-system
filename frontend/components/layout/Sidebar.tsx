@@ -20,7 +20,9 @@ const iconMap: Record<string, string> = {
   clock: "🕐",
   calendar: "📅",
   "check-circle": "✅",
+  "check-square": "☑️",
   "file-text": "📄",
+  user: "👤",
 };
 
 export default function Sidebar({ role }: SidebarProps) {
@@ -60,15 +62,15 @@ export default function Sidebar({ role }: SidebarProps) {
         <div className="flex h-full flex-col">
           <div className="flex h-20 items-center px-6 border-b border-[#1E293B]">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg overflow-hidden p-1.5">
+              <div className="h-20 w-20 flex items-center justify-center">
                 <img 
                   src="/payroll logo.png" 
-                  alt="InsightPayroll Logo" 
-                  className="w-full h-full object-contain"
+                  alt="MeeTech Labs Management system Logo" 
+                  className="w-full h-full object-contain drop-shadow-lg"
                 />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">InsightPayroll</h1>
+                <h1 className="text-lg font-bold text-white">MeeTech Labs Management system</h1>
                 <p className="text-xs text-slate-400 capitalize">{role}</p>
               </div>
             </div>
@@ -103,7 +105,7 @@ export default function Sidebar({ role }: SidebarProps) {
           </nav>
           <div className="p-4 border-t border-[#1E293B]">
             <Link
-              href={role === "admin" ? "/admin/profile" : role === "manager" ? "/manager/profile" : "/employee/profile"}
+              href={role === "admin" ? "/admin/profile" : role === "manager" ? "/manager/profile" : role === "dept_lead" ? "/department_lead/profile" : "/employee/profile"}
               onClick={() => setIsMobileOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
             >

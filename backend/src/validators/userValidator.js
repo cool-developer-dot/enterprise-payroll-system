@@ -88,13 +88,19 @@ export const validateCreateUser = [
     .isLength({ max: 20 })
     .withMessage('Phone number must be less than 20 characters'),
   body('baseSalary')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Base salary must be a positive number'),
-  body('hourlyRate')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Hourly rate must be a positive number'),
+    .custom((value, { req }) => {
+      // Monthly salary is required for employee and manager roles
+      if ((req.body.role === 'employee' || req.body.role === 'manager') && (!value || value <= 0)) {
+        throw new Error('Monthly salary is required and must be a positive number for employees and managers');
+      }
+      if (value !== undefined && value !== null && value !== '') {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0) {
+          throw new Error('Monthly salary must be a positive number');
+        }
+      }
+      return true;
+    }),
 ];
 
 export const validateUpdateUser = [
@@ -182,11 +188,7 @@ export const validateUpdateUser = [
   body('baseSalary')
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Base salary must be a positive number'),
-  body('hourlyRate')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Hourly rate must be a positive number'),
+    .withMessage('Monthly salary must be a positive number'),
 ];
 
 export const validateProfileUpdate = [

@@ -9,6 +9,7 @@ import Input from "@/components/ui/Input";
 import Link from "next/link";
 import { managerService } from "@/lib/services/managerService";
 import type { PerformanceUpdate, TeamMember } from "@/lib/api/manager";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -54,8 +55,8 @@ export default function ManagerDashboardPage() {
       setDashboardData(dashboard);
       setTeamMembers(team);
     } catch (error: any) {
-      console.error('Failed to load dashboard:', error);
-      alert(error?.message || 'Failed to load dashboard data. Please try again.');
+      const errorMessage = error?.message || 'Failed to load dashboard data. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ export default function ManagerDashboardPage() {
       const result = await managerService.getPerformanceUpdates(params);
       setUpdates(result.updates);
     } catch (error: any) {
-      console.error('Failed to load performance updates:', error);
+      // Error handled silently - updates will be empty
     }
   };
 
@@ -124,9 +125,10 @@ export default function ManagerDashboardPage() {
         nextDayFocus: "",
       });
       setShowAddModal(false);
+      toast.success('Performance update saved successfully!');
       await loadPerformanceUpdates();
     } catch (error: any) {
-      alert(error.message || 'Failed to save performance update');
+      toast.error(error.message || 'Failed to save performance update');
     } finally {
       setSaving(false);
     }

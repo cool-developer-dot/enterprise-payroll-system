@@ -3,6 +3,7 @@ import PayStub from '../models/PayStub.js';
 import User from '../models/User.js';
 import Department from '../models/Department.js';
 import Setting from '../models/Setting.js';
+import Notification from '../models/Notification.js';
 import { sendSuccess, sendPaginated } from '../utils/responseHandler.js';
 import { ResourceNotFoundError, InvalidInputError, AccessDeniedError } from '../utils/errorHandler.js';
 import { buildPagination, buildSort } from '../utils/queryBuilder.js';
@@ -11,6 +12,7 @@ import {
   generatePaystub,
 } from '../services/payrollCalculationService.js';
 import { generatePaystubPDF } from '../utils/pdfGenerator.js';
+import { getPayPeriod, calculatePayDate } from '../utils/dateUtils.js';
 import mongoose from 'mongoose';
 
 export const getPayrollPeriods = async (req, res, next) => {
@@ -77,19 +79,45 @@ export const createPayrollPeriod = async (req, res, next) => {
       return next(new InvalidInputError('Period start, end, and pay date are required'));
     }
 
+    // Validate dates
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+    const payDateObj = new Date(payDate);
+
+    if (startDate >= endDate) {
+      return next(new InvalidInputError('Period end date must be after period start date'));
+    }
+
+    if (payDateObj <= endDate) {
+      return next(new InvalidInputError('Pay date must be after period end date'));
+    }
+
+    // Count active employees for the period
+    const employeeCount = await User.countDocuments({
+      status: 'active',
+      role: { $in: ['employee', 'manager'] },
+      ...(departmentId && { departmentId: new mongoose.Types.ObjectId(departmentId) })
+    });
+
     const periodData = {
-      periodStart: new Date(periodStart),
-      periodEnd: new Date(periodEnd),
-      payDate: new Date(payDate),
+      periodStart: startDate,
+      periodEnd: endDate,
+      payDate: payDateObj,
       status: 'draft',
       department: department || undefined,
       departmentId: departmentId ? new mongoose.Types.ObjectId(departmentId) : undefined,
+      employeeCount,
       createdBy: req.user._id,
     };
 
     const period = await PayrollPeriod.create(periodData);
 
-    return sendSuccess(res, 201, 'Payroll period created successfully', { period });
+    // Populate the created period before returning
+    const populatedPeriod = await PayrollPeriod.findById(period._id)
+      .populate('departmentId', 'name')
+      .lean();
+
+    return sendSuccess(res, 201, 'Payroll period created successfully', { period: populatedPeriod });
   } catch (error) {
     next(error);
   }
@@ -109,15 +137,91 @@ export const updatePayrollPeriod = async (req, res, next) => {
     }
 
     const updateData = { ...req.body };
-    if (updateData.periodStart) updateData.periodStart = new Date(updateData.periodStart);
-    if (updateData.periodEnd) updateData.periodEnd = new Date(updateData.periodEnd);
-    if (updateData.payDate) updateData.payDate = new Date(updateData.payDate);
-    if (updateData.departmentId) updateData.departmentId = new mongoose.Types.ObjectId(updateData.departmentId);
+    
+    // Validate dates
+    if (updateData.periodStart) {
+      updateData.periodStart = new Date(updateData.periodStart);
+      if (isNaN(updateData.periodStart.getTime())) {
+        return next(new InvalidInputError('Invalid period start date'));
+      }
+    }
+    if (updateData.periodEnd) {
+      updateData.periodEnd = new Date(updateData.periodEnd);
+      if (isNaN(updateData.periodEnd.getTime())) {
+        return next(new InvalidInputError('Invalid period end date'));
+      }
+    }
+    if (updateData.payDate) {
+      updateData.payDate = new Date(updateData.payDate);
+      if (isNaN(updateData.payDate.getTime())) {
+        return next(new InvalidInputError('Invalid pay date'));
+      }
+    }
+
+    // Validate date order
+    const periodStart = updateData.periodStart || period.periodStart;
+    const periodEnd = updateData.periodEnd || period.periodEnd;
+    const payDate = updateData.payDate || period.payDate;
+
+    if (periodStart >= periodEnd) {
+      return next(new InvalidInputError('Period end date must be after period start date'));
+    }
+
+    if (payDate <= periodEnd) {
+      return next(new InvalidInputError('Pay date must be after period end date'));
+    }
+
+    // Validate employee count
+    if (updateData.employeeCount !== undefined) {
+      const employeeCount = parseInt(updateData.employeeCount);
+      if (isNaN(employeeCount) || employeeCount < 0) {
+        return next(new InvalidInputError('Employee count must be a non-negative number'));
+      }
+      updateData.employeeCount = employeeCount;
+    }
+
+    if (updateData.departmentId) {
+      updateData.departmentId = new mongoose.Types.ObjectId(updateData.departmentId);
+    }
 
     Object.assign(period, updateData);
     await period.save();
 
-    return sendSuccess(res, 200, 'Payroll period updated successfully', { period });
+    // Notify managers and employees about period update (non-blocking)
+    try {
+      const managers = await User.find({ role: 'manager', status: 'active' }).select('_id');
+      const employees = await User.find({ 
+        role: { $in: ['employee', 'manager'] }, 
+        status: 'active' 
+      }).select('_id');
+
+      const notifications = [];
+      for (const user of [...managers, ...employees]) {
+        notifications.push({
+          userId: user._id,
+          type: 'info',
+          title: 'Payroll Period Updated',
+          message: `Payroll period ${new Date(period.periodStart).toLocaleDateString()} - ${new Date(period.periodEnd).toLocaleDateString()} has been updated.`,
+          relatedEntityType: 'payroll_period',
+          relatedEntityId: period._id,
+          priority: 'low',
+          actionUrl: period.status === 'completed' ? '/employee/paystubs' : '/manager/reports',
+          actionLabel: 'View Details'
+        });
+      }
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifyError) {
+      console.warn('Failed to send notifications for payroll period update:', notifyError.message);
+    }
+
+    const updatedPeriod = await PayrollPeriod.findById(id)
+      .populate('departmentId', 'name')
+      .lean();
+
+    return sendSuccess(res, 200, 'Payroll period updated successfully', { period: updatedPeriod });
   } catch (error) {
     next(error);
   }
@@ -138,8 +242,42 @@ export const processPayroll = async (req, res, next) => {
 
     const result = await processPayrollForPeriod(id, req.user._id);
 
+    // Notify all employees and managers about payroll processing (non-blocking)
+    try {
+      const employees = await User.find({ 
+        role: { $in: ['employee', 'manager'] }, 
+        status: 'active' 
+      }).select('_id name email');
+
+      const notifications = [];
+      for (const user of employees) {
+        notifications.push({
+          userId: user._id,
+          type: 'info',
+          title: 'Payroll Processed',
+          message: `Payroll for period ${new Date(period.periodStart).toLocaleDateString()} - ${new Date(period.periodEnd).toLocaleDateString()} has been processed. Your paystub is now available.`,
+          relatedEntityType: 'payroll_period',
+          relatedEntityId: period._id,
+          priority: 'high',
+          actionUrl: '/employee/paystubs',
+          actionLabel: 'View Paystub'
+        });
+      }
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifyError) {
+      console.warn('Failed to send notifications for payroll processing:', notifyError.message);
+    }
+
+    const updatedPeriod = await PayrollPeriod.findById(id)
+      .populate('departmentId', 'name')
+      .populate('processedBy', 'name email')
+      .lean();
+
     return sendSuccess(res, 200, 'Payroll processed successfully', {
-      period: await PayrollPeriod.findById(id).lean(),
+      period: updatedPeriod,
       paystubsCount: result.paystubs.length,
       totals: result.totals,
     });
@@ -173,8 +311,43 @@ export const approvePayroll = async (req, res, next) => {
       approvedAt: new Date(),
     });
 
+    // Notify all employees and managers about payroll approval (non-blocking)
+    try {
+      const employees = await User.find({ 
+        role: { $in: ['employee', 'manager'] }, 
+        status: 'active' 
+      }).select('_id name email');
+
+      const notifications = [];
+      for (const user of employees) {
+        notifications.push({
+          userId: user._id,
+          type: 'success',
+          title: 'Payroll Approved and Paid',
+          message: `Payroll for period ${new Date(period.periodStart).toLocaleDateString()} - ${new Date(period.periodEnd).toLocaleDateString()} has been approved and paid. Payment will be processed according to the pay date.`,
+          relatedEntityType: 'payroll_period',
+          relatedEntityId: id,
+          priority: 'high',
+          actionUrl: '/employee/paystubs',
+          actionLabel: 'View Paystub'
+        });
+      }
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifyError) {
+      console.warn('Failed to send notifications for payroll approval:', notifyError.message);
+    }
+
+    const updatedPeriod = await PayrollPeriod.findById(id)
+      .populate('departmentId', 'name')
+      .populate('processedBy', 'name email')
+      .populate('approvedBy', 'name email')
+      .lean();
+
     return sendSuccess(res, 200, 'Payroll approved successfully', {
-      period: await PayrollPeriod.findById(id).lean(),
+      period: updatedPeriod,
     });
   } catch (error) {
     next(error);
@@ -184,16 +357,78 @@ export const approvePayroll = async (req, res, next) => {
 export const getCurrentPeriod = async (req, res, next) => {
   try {
     const now = new Date();
-    const period = await PayrollPeriod.findOne({
+    now.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
+
+    let period = await PayrollPeriod.findOne({
       periodStart: { $lte: now },
       periodEnd: { $gte: now },
       status: { $in: ['draft', 'processing'] },
     })
       .populate('departmentId', 'name')
+      .sort({ periodStart: -1 })
       .lean();
 
+    // If no current period exists, try to auto-create one based on payroll settings
     if (!period) {
-      return sendSuccess(res, 200, 'No current period found', { period: null });
+      try {
+        const settings = await Setting.findOne({ type: 'payroll' });
+        const payrollSettings = settings?.payroll || {};
+
+        // Only auto-create if payroll settings are configured
+        if (payrollSettings.salaryCycle && payrollSettings.payDay !== undefined) {
+          const { getPayPeriod, calculatePayDate } = await import('../utils/dateUtils.js');
+          const { periodStart, periodEnd } = getPayPeriod(now, payrollSettings.salaryCycle, payrollSettings.payDay);
+          const payDate = calculatePayDate(periodEnd, payrollSettings.salaryCycle, payrollSettings.payDay);
+
+          // Normalize dates for comparison
+          const normalizedStart = new Date(periodStart);
+          normalizedStart.setHours(0, 0, 0, 0);
+          const normalizedEnd = new Date(periodEnd);
+          normalizedEnd.setHours(23, 59, 59, 999);
+
+          // Check if we're actually in the calculated period and no period already exists for this range
+          if (now >= normalizedStart && now <= normalizedEnd) {
+            const existingPeriod = await PayrollPeriod.findOne({
+              periodStart: normalizedStart,
+              periodEnd: normalizedEnd,
+            }).lean();
+
+            if (!existingPeriod) {
+              // Count active employees for the period
+              const employeeCount = await User.countDocuments({
+                status: 'active',
+                role: { $in: ['employee', 'manager'] }
+              }).catch(() => 0); // Default to 0 if count fails
+
+              // Create the period
+              const newPeriod = await PayrollPeriod.create({
+                periodStart: normalizedStart,
+                periodEnd: normalizedEnd,
+                payDate,
+                status: 'draft',
+                employeeCount,
+                createdBy: req.user._id,
+              });
+
+              period = await PayrollPeriod.findById(newPeriod._id)
+                .populate('departmentId', 'name')
+                .lean();
+            } else {
+              period = existingPeriod;
+            }
+          }
+        }
+      } catch (createError) {
+        // If auto-create fails, log but don't fail the request
+        console.warn('Failed to auto-create payroll period:', createError.message);
+      }
+    }
+
+    if (!period) {
+      return sendSuccess(res, 200, 'No current period found. Please create a payroll period manually or configure payroll settings for automatic period creation.', { 
+        period: null,
+        requiresManualCreation: true 
+      });
     }
 
     return sendSuccess(res, 200, 'Current period retrieved successfully', { period });

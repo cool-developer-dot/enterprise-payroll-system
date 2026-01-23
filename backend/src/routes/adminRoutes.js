@@ -11,9 +11,9 @@ router.use(authenticate);
 /**
  * GET /api/admin/dashboard
  * Get admin dashboard data
- * Access: Admin only
+ * Access: Admin and Manager
  */
-router.get('/dashboard', authorize('admin'), getDashboard);
+router.get('/dashboard', authorize('admin', 'manager'), getDashboard);
 
 export default router;
 

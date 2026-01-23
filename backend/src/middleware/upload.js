@@ -93,6 +93,137 @@ export const upload = multer({
   }
 });
 
+// Custom middleware for profile photo upload
+export const uploadProfilePhoto = () => {
+  // Configure storage specifically for profile photos
+  const profileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const profileDir = path.join(uploadsDir, 'profiles');
+      if (!fs.existsSync(profileDir)) {
+        fs.mkdirSync(profileDir, { recursive: true });
+      }
+      cb(null, profileDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname).toLowerCase();
+      // Use user ID if available, otherwise use timestamp-based name
+      const userId = req.user?._id?.toString() || req.user?.id?.toString() || 'user';
+      const sanitizedName = `profile-${userId}-${uniqueSuffix}${ext}`;
+      cb(null, sanitizedName);
+    }
+  });
+
+  // Profile photo file filter - only images
+  const profileFileFilter = (req, file, cb) => {
+    if (allowedMimeTypes.images.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new InvalidInputError(`Only image files are allowed. Allowed types: ${allowedMimeTypes.images.join(', ')}`), false);
+    }
+  };
+
+  const profileUpload = multer({
+    storage: profileStorage,
+    fileFilter: profileFileFilter,
+    limits: {
+      fileSize: fileSizeLimits.image, // 5MB for profile photos
+      files: 1
+    }
+  });
+
+  return (req, res, next) => {
+    // Ensure user is authenticated before upload (should be checked by auth middleware, but double-check)
+    if (!req.user || !req.user._id) {
+      return next(new InvalidInputError('Authentication required to upload profile photo'));
+    }
+    
+    const uploadMiddleware = profileUpload.single('photo');
+    
+    uploadMiddleware(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return next(new InvalidInputError(`Profile photo size exceeds the limit of ${fileSizeLimits.image / (1024 * 1024)}MB. Maximum size is 5MB.`));
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return next(new InvalidInputError('Only one profile photo can be uploaded at a time'));
+        }
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return next(new InvalidInputError('Unexpected file field. Please use "photo" as the field name.'));
+        }
+        return next(new InvalidInputError(`Upload error: ${err.message}`));
+      }
+      
+      if (err) {
+        // If it's an InvalidInputError from fileFilter, return it directly
+        if (err instanceof InvalidInputError || err.isOperational) {
+          return next(err);
+        }
+        // For other errors, provide user-friendly message
+        if (process.env.NODE_ENV === 'production') {
+          return next(new InvalidInputError('Failed to process uploaded file. Please try again.'));
+        }
+        return next(err);
+      }
+
+      // Additional validation if file was uploaded
+      if (req.file) {
+        const fileSizeLimit = fileSizeLimits.image;
+        if (req.file.size > fileSizeLimit) {
+          // Delete the uploaded file
+          if (fs.existsSync(req.file.path)) {
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (deleteError) {
+              console.warn('Failed to delete oversized file:', deleteError.message);
+            }
+          }
+          return next(new InvalidInputError(`Profile photo size exceeds the limit of ${fileSizeLimit / (1024 * 1024)}MB. Maximum size is 5MB.`));
+        }
+        
+        // Validate it's actually an image file by extension
+        const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        if (!allowedExts.includes(ext)) {
+          // Delete the invalid file
+          if (fs.existsSync(req.file.path)) {
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (deleteError) {
+              console.warn('Failed to delete invalid file:', deleteError.message);
+            }
+          }
+          return next(new InvalidInputError(`Invalid file type. Only ${allowedExts.join(', ')} image files are allowed.`));
+        }
+        
+        // Validate file exists and is readable
+        if (!fs.existsSync(req.file.path)) {
+          return next(new InvalidInputError('Uploaded file was not saved correctly. Please try again.'));
+        }
+        
+        // Validate mime type matches extension
+        const mimeTypeMap = {
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.png': 'image/png',
+          '.gif': 'image/gif',
+          '.webp': 'image/webp'
+        };
+        const expectedMimeType = mimeTypeMap[ext];
+        if (expectedMimeType && !req.file.mimetype.includes(expectedMimeType.split('/')[1])) {
+          // Log warning but don't fail - mime types can be inconsistent
+          console.warn(`Mime type mismatch: ${req.file.mimetype} vs expected ${expectedMimeType} for extension ${ext}`);
+        }
+      } else {
+        // No file uploaded but request passed authentication
+        return next(new InvalidInputError('No photo file provided. Please select an image file to upload.'));
+      }
+
+      next();
+    });
+  };
+};
+
 // Custom middleware for single file upload with validation
 export const uploadSingle = (fieldName = 'file', options = {}) => {
   return (req, res, next) => {
@@ -118,7 +249,9 @@ export const uploadSingle = (fieldName = 'file', options = {}) => {
         const fileSizeLimit = getFileSizeLimit(req.file.mimetype);
         if (req.file.size > fileSizeLimit) {
           // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
           return next(new InvalidInputError(`File size exceeds the limit of ${fileSizeLimit / (1024 * 1024)}MB`));
         }
       }

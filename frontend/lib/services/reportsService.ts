@@ -34,7 +34,7 @@ const generatePDF = (reportType: string, data: any, dateFrom: string, dateTo: st
     content += `
       <div class="metric">
         <div class="metric-label">Total Payroll</div>
-        <div class="metric-value">$${data.totalPayroll.toLocaleString()}</div>
+        <div class="metric-value">Rs ${data.totalPayroll.toLocaleString()}</div>
       </div>
       <div class="metric">
         <div class="metric-label">Employee Count</div>
@@ -42,7 +42,7 @@ const generatePDF = (reportType: string, data: any, dateFrom: string, dateTo: st
       </div>
       <div class="metric">
         <div class="metric-label">Average Salary</div>
-        <div class="metric-value">$${data.averageSalary.toLocaleString()}</div>
+        <div class="metric-value">Rs ${data.averageSalary.toLocaleString()}</div>
       </div>
       <div class="metric">
         <div class="metric-label">Period</div>
@@ -105,7 +105,7 @@ const generatePDF = (reportType: string, data: any, dateFrom: string, dateTo: st
           <tr>
             <td>${d.department}</td>
             <td>${d.employeeCount}</td>
-            <td>$${d.totalCost.toLocaleString()}</td>
+            <td>Rs ${d.totalCost.toLocaleString()}</td>
             <td>${d.percentage.toFixed(1)}%</td>
           </tr>
         `).join('')}
@@ -135,9 +135,9 @@ const generateExcel = (reportType: string, data: any, dateFrom: string, dateTo: 
 
   if (reportType === 'payroll-summary') {
     csvContent += `Metric,Value\n`;
-    csvContent += `Total Payroll,$${data.totalPayroll.toLocaleString()}\n`;
+    csvContent += `Total Payroll,Rs ${data.totalPayroll.toLocaleString()}\n`;
     csvContent += `Employee Count,${data.employeeCount}\n`;
-    csvContent += `Average Salary,$${data.averageSalary.toLocaleString()}\n`;
+    csvContent += `Average Salary,Rs ${data.averageSalary.toLocaleString()}\n`;
     csvContent += `Period,${data.period}\n`;
   } else if (reportType === 'attendance-overview') {
     csvContent += `Metric,Value\n`;
@@ -159,7 +159,7 @@ const generateExcel = (reportType: string, data: any, dateFrom: string, dateTo: 
   } else if (reportType === 'department-costs') {
     csvContent += `Department,Employees,Total Cost,Percentage\n`;
     data.forEach((d: any) => {
-      csvContent += `${d.department},${d.employeeCount},$${d.totalCost.toLocaleString()},${d.percentage.toFixed(1)}%\n`;
+      csvContent += `${d.department},${d.employeeCount},Rs ${d.totalCost.toLocaleString()},${d.percentage.toFixed(1)}%\n`;
     });
   }
 

@@ -14,6 +14,7 @@ import { reportService } from "@/lib/services/reportService";
 import { departmentsApi } from "@/lib/api/departments";
 import type { Report, ReportType } from "@/lib/api/reports";
 import type { Department } from "@/lib/api/departments";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function ManagerReportsPage() {
   const [activeTab, setActiveTab] = useState<"quick" | "generated">("quick");
@@ -85,7 +86,7 @@ export default function ManagerReportsPage() {
       const response = await departmentsApi.getDepartments({ limit: 100 });
       setDepartments(response.data || []);
     } catch (err: any) {
-      console.error("Failed to load departments:", err);
+      toast.error("Failed to load departments");
     }
   };
 
@@ -104,8 +105,9 @@ export default function ManagerReportsPage() {
       setLeaveAnalytics(leave);
       setDepartmentCosts(Array.isArray(costs) ? costs : []);
     } catch (err: any) {
-      setError(err.message || "Failed to load reports");
-      console.error("Failed to load quick reports:", err);
+      const errorMessage = err.message || "Failed to load reports";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -134,8 +136,9 @@ export default function ManagerReportsPage() {
         totalPages: 0,
       });
     } catch (err: any) {
-      setError(err.message || "Failed to load reports");
-      console.error("Failed to load generated reports:", err);
+      const errorMessage = err.message || "Failed to load reports";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -161,7 +164,7 @@ export default function ManagerReportsPage() {
         departmentId: generateForm.departmentId || undefined,
         expiresInDays: generateForm.expiresInDays,
       });
-      alert("Report generated successfully!");
+      toast.success("Report generated successfully! PDF and Excel files are being generated in the background.");
       setGenerateForm({
         type: "payroll",
         dateFrom: dateFrom,
@@ -172,8 +175,9 @@ export default function ManagerReportsPage() {
       loadGeneratedReports();
       setActiveTab("generated");
     } catch (err: any) {
-      setError(err.message || "Failed to generate report");
-      console.error("Failed to generate report:", err);
+      const errorMessage = err.message || "Failed to generate report";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setGenerating(false);
     }
@@ -182,18 +186,18 @@ export default function ManagerReportsPage() {
   const handleDownloadPDF = async (reportId: string, reportType: string) => {
     try {
       await reportService.downloadPDF(reportId, `${reportType}-report.pdf`);
+      toast.success("PDF downloaded successfully");
     } catch (err: any) {
-      alert(err.message || "Failed to download PDF");
-      console.error("Failed to download PDF:", err);
+      toast.error(err.message || "Failed to download PDF. The file may still be generating. Please try again in a moment.");
     }
   };
 
   const handleDownloadExcel = async (reportId: string, reportType: string) => {
     try {
       await reportService.downloadExcel(reportId, `${reportType}-report.xlsx`);
+      toast.success("Excel file downloaded successfully");
     } catch (err: any) {
-      alert(err.message || "Failed to download Excel");
-      console.error("Failed to download Excel:", err);
+      toast.error(err.message || "Failed to download Excel. The file may still be generating. Please try again in a moment.");
     }
   };
 
@@ -322,7 +326,7 @@ export default function ManagerReportsPage() {
                         await handleDownloadExcel(report._id, "payroll");
                       }
                     } catch (err: any) {
-                      alert(err.message || "Failed to export");
+                      toast.error(err.message || "Failed to export");
                     }
                   }}
                 />

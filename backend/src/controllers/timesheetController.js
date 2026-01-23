@@ -67,6 +67,29 @@ export const getTimesheets = async (req, res, next) => {
     if (req.user.role === 'employee') {
       // Employees can only see their own timesheets
       query.employeeId = req.user._id;
+    } else if (req.user.role === 'dept_lead') {
+      // Dept leads can only see timesheets from their department employees
+      try {
+        const deptLead = await User.findById(req.user._id).select('department').lean();
+        if (deptLead?.department) {
+          // Get all employees in the same department
+          const departmentEmployees = await User.find({
+            department: deptLead.department,
+            status: { $in: ['active', 'on-leave'] }
+          }).select('_id').lean();
+          
+          const deptEmployeeIds = departmentEmployees.map(emp => emp._id);
+          deptEmployeeIds.push(req.user._id); // Include dept_lead's own timesheets
+          
+          query.employeeId = { $in: deptEmployeeIds };
+        } else {
+          // If no department, only see own timesheets
+          query.employeeId = req.user._id;
+        }
+      } catch (err) {
+        console.error('[getTimesheets] Error fetching department employees for dept_lead:', err);
+        query.employeeId = req.user._id; // Fallback to own timesheets
+      }
     } else if (req.user.role === 'manager') {
       // Managers can see their direct reports' timesheets
       // This includes submitted timesheets that need approval
@@ -134,15 +157,22 @@ export const getTimesheetById = async (req, res, next) => {
     }
     
     // Role-based access control
-    if (req.user.role === 'employee' && timesheet.employeeId._id.toString() !== req.user._id.toString()) {
+    // Handle both populated and non-populated employeeId
+    const employeeIdValue = timesheet.employeeId?._id || timesheet.employeeId;
+    const employeeIdString = employeeIdValue?.toString() || employeeIdValue;
+    
+    if (req.user.role === 'employee' && employeeIdString !== req.user._id.toString()) {
       return next(new AccessDeniedError('You can only view your own timesheets'));
     }
     
     if (req.user.role === 'manager') {
-      const employee = await User.findById(timesheet.employeeId._id);
+      const employee = await User.findById(employeeIdValue);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
       const isManager = employee.managerId?.toString() === req.user._id.toString() || 
                        employee.reportsTo?.toString() === req.user._id.toString();
-      if (!isManager && timesheet.employeeId._id.toString() !== req.user._id.toString()) {
+      if (!isManager && employeeIdString !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view timesheets for your direct reports'));
       }
     }
@@ -384,12 +414,11 @@ export const bulkApproveTimesheets = async (req, res, next) => {
     for (const timesheet of timesheets) {
       try {
         const employee = timesheet.employeeId;
-        const isManager = req.user.role === 'manager' && 
-          (employee.managerId?.toString() === req.user._id.toString() || 
-           employee.reportsTo?.toString() === req.user._id.toString());
+        const isManager = req.user.role === 'manager';
         const isAdmin = req.user.role === 'admin';
+        const isDeptLead = req.user.role === 'dept_lead';
         
-        if (isManager || isAdmin) {
+        if (isManager || isAdmin || isDeptLead) {
           await approveTimesheet(timesheet._id.toString(), req.user, comments);
           approved.push(timesheet._id);
         } else {
@@ -443,12 +472,11 @@ export const bulkRejectTimesheets = async (req, res, next) => {
     for (const timesheet of timesheets) {
       try {
         const employee = timesheet.employeeId;
-        const isManager = req.user.role === 'manager' && 
-          (employee.managerId?.toString() === req.user._id.toString() || 
-           employee.reportsTo?.toString() === req.user._id.toString());
+        const isManager = req.user.role === 'manager';
         const isAdmin = req.user.role === 'admin';
+        const isDeptLead = req.user.role === 'dept_lead';
         
-        if (isManager || isAdmin) {
+        if (isManager || isAdmin || isDeptLead) {
           await rejectTimesheet(timesheet._id.toString(), req.user, reason);
           rejected.push(timesheet._id);
         } else {
@@ -555,6 +583,27 @@ export const getEmployeePeriodTimesheet = async (req, res, next) => {
                        employee.reportsTo?.toString() === req.user._id.toString();
       if (!isManager && employeeId !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view timesheets for your direct reports'));
+      }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view timesheets for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeId !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view timesheets for employees in your department'));
       }
     }
     

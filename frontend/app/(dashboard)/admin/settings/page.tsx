@@ -28,9 +28,9 @@ export default function AdminSettingsPage() {
     try {
       const data = await settingsService.getSettings();
       setSettings(data);
-    } catch (err) {
-      setError("Failed to load settings. Please try again.");
-      console.error(err);
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to load settings. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -50,7 +50,6 @@ export default function AdminSettingsPage() {
       if (settings.company) {
         savePromises.push(
           settingsService.updateCompanySettings(settings.company).catch(err => {
-            console.error('Failed to save company settings:', err);
             throw new Error('Company settings: ' + (err instanceof Error ? err.message : 'Failed'));
           })
         );
@@ -59,7 +58,6 @@ export default function AdminSettingsPage() {
       if (settings.payroll) {
         savePromises.push(
           settingsService.updatePayrollSettings(settings.payroll).catch(err => {
-            console.error('Failed to save payroll settings:', err);
             throw new Error('Payroll settings: ' + (err instanceof Error ? err.message : 'Failed'));
           })
         );
@@ -68,7 +66,6 @@ export default function AdminSettingsPage() {
       if (settings.attendance) {
         savePromises.push(
           settingsService.updateAttendanceRules(settings.attendance).catch(err => {
-            console.error('Failed to save attendance settings:', err);
             throw new Error('Attendance settings: ' + (err instanceof Error ? err.message : 'Failed'));
           })
         );
@@ -77,7 +74,6 @@ export default function AdminSettingsPage() {
       if (settings.leavePolicies && settings.leavePolicies.length > 0) {
         savePromises.push(
           settingsService.updateLeavePolicies(settings.leavePolicies).catch(err => {
-            console.error('Failed to save leave policies:', err);
             throw new Error('Leave policies: ' + (err instanceof Error ? err.message : 'Failed'));
           })
         );
@@ -89,8 +85,8 @@ export default function AdminSettingsPage() {
       // Reload settings to get updated data
       await loadSettings();
     } catch (err: any) {
-      setError(err.message || "Failed to save settings. Please try again.");
-      console.error(err);
+      const errorMessage = err.message || "Failed to save settings. Please try again.";
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }

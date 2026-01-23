@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     required: [true, 'Role is required'],
-    enum: ['admin', 'manager', 'employee']
+    enum: ['admin', 'manager', 'dept_lead', 'employee']
   },
   employeeId: {
     type: String,
@@ -93,14 +93,14 @@ const userSchema = new mongoose.Schema({
   terminationDate: { type: Date },
   terminationReason: { type: String },
 
-  // Salary Information
-  salaryType: {
-    type: String,
-    enum: ['monthly', 'hourly', 'annual']
+  // Salary Information (Monthly Salary Only)
+  // baseSalary is required for employees and managers only, not for admins
+  baseSalary: { 
+    type: Number,
+    required: false, // Make optional in schema - validation handled in pre-save hook
+    min: [0, 'Monthly salary must be a positive number']
   },
-  baseSalary: { type: Number },
-  hourlyRate: { type: Number },
-  currency: { type: String, default: 'USD' },
+  currency: { type: String, default: 'PKR' },
 
   // Hierarchy
   managerId: {
@@ -175,6 +175,36 @@ userSchema.index({ managerId: 1 });
 userSchema.index({ employmentType: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ lastActiveAt: -1 });
+
+// Normalize role before saving (department_lead -> dept_lead)
+userSchema.pre('save', function(next) {
+  if (this.role === 'department_lead') {
+    this.role = 'dept_lead';
+  }
+  next();
+});
+
+// Validate baseSalary before saving (only for employees and managers)
+// This hook only runs when baseSalary is modified OR when creating a new user
+userSchema.pre('save', function(next) {
+  // Skip validation if role is admin (admins don't need baseSalary)
+  // Managers still need baseSalary as they are paid employees
+  if (this.role === 'admin') {
+    return next();
+  }
+  
+  // baseSalary is required only for employees and managers
+  // Only validate if baseSalary field is being modified or if this is a new document
+  if ((this.isNew || this.isModified('baseSalary') || this.isModified('role')) && 
+      (this.role === 'employee' || this.role === 'manager')) {
+    if (this.baseSalary === undefined || this.baseSalary === null || isNaN(this.baseSalary) || this.baseSalary < 0) {
+      const error = new Error('Monthly salary is required and must be a positive number for employees and managers');
+      error.name = 'ValidationError';
+      return next(error);
+    }
+  }
+  next();
+});
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

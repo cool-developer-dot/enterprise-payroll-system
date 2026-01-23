@@ -232,15 +232,38 @@ export const approveTimesheet = async (timesheetId, approver, comments) => {
     throw new InvalidInputError(`Cannot approve timesheet with status: ${timesheet.status}`);
   }
   
-  // Verify approver has permission (manager or admin)
+  // Verify approver has permission
   const employee = timesheet.employeeId;
-  const isManager = approver.role === 'manager' && 
-    (employee.managerId?.toString() === approver._id.toString() || 
-     employee.reportsTo?.toString() === approver._id.toString());
+  const isManager = approver.role === 'manager';
   const isAdmin = approver.role === 'admin';
+  const isDeptLead = approver.role === 'dept_lead';
   
-  if (!isManager && !isAdmin) {
+  if (!isManager && !isAdmin && !isDeptLead) {
     throw new InvalidInputError('You do not have permission to approve this timesheet');
+  }
+  
+  // For dept_lead, verify the employee is in their department
+  if (isDeptLead) {
+    const deptLead = await User.findById(approver._id).select('department departmentId').lean();
+    if (!deptLead) {
+      throw new InvalidInputError('Department lead not found');
+    }
+    
+    const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+    if (!employeeUser) {
+      throw new InvalidInputError('Employee not found');
+    }
+    
+    // Check if employee is in dept_lead's department
+    const sameDepartment = 
+      (deptLead.departmentId && employeeUser.departmentId && 
+       deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+      (deptLead.department && employeeUser.department && 
+       deptLead.department === employeeUser.department);
+    
+    if (!sameDepartment) {
+      throw new InvalidInputError('You can only approve timesheets for employees in your department');
+    }
   }
   
   // Recalculate hours to ensure accuracy
@@ -288,13 +311,36 @@ export const rejectTimesheet = async (timesheetId, rejector, reason) => {
   
   // Verify rejector has permission
   const employee = timesheet.employeeId;
-  const isManager = rejector.role === 'manager' && 
-    (employee.managerId?.toString() === rejector._id.toString() || 
-     employee.reportsTo?.toString() === rejector._id.toString());
+  const isManager = rejector.role === 'manager';
   const isAdmin = rejector.role === 'admin';
+  const isDeptLead = rejector.role === 'dept_lead';
   
-  if (!isManager && !isAdmin) {
+  if (!isManager && !isAdmin && !isDeptLead) {
     throw new InvalidInputError('You do not have permission to reject this timesheet');
+  }
+  
+  // For dept_lead, verify the employee is in their department
+  if (isDeptLead) {
+    const deptLead = await User.findById(rejector._id).select('department departmentId').lean();
+    if (!deptLead) {
+      throw new InvalidInputError('Department lead not found');
+    }
+    
+    const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+    if (!employeeUser) {
+      throw new InvalidInputError('Employee not found');
+    }
+    
+    // Check if employee is in dept_lead's department
+    const sameDepartment = 
+      (deptLead.departmentId && employeeUser.departmentId && 
+       deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+      (deptLead.department && employeeUser.department && 
+       deptLead.department === employeeUser.department);
+    
+    if (!sameDepartment) {
+      throw new InvalidInputError('You can only reject timesheets for employees in your department');
+    }
   }
   
   if (!reason || reason.trim().length === 0) {

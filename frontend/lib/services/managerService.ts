@@ -1,4 +1,4 @@
-import { managerApi, type DashboardData, type TeamMember, type PerformanceUpdate, type CreatePerformanceUpdateData, type UpdatePerformanceUpdateData } from '@/lib/api/manager';
+import { managerApi, type DashboardData, type TeamMember, type PerformanceUpdate, type CreatePerformanceUpdateData, type UpdatePerformanceUpdateData, type ManagerSettings, type UpdateManagerSettingsData, type Session } from '@/lib/api/manager';
 
 export const managerService = {
   async getDashboard(): Promise<DashboardData> {
@@ -120,6 +120,30 @@ export const managerService = {
       };
     }
     throw new Error('Failed to update performance update');
+  },
+
+  async getSettings(): Promise<ManagerSettings> {
+    const response = await managerApi.getSettings();
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error('Failed to load settings');
+  },
+
+  async updateSettings(data: UpdateManagerSettingsData): Promise<ManagerSettings> {
+    const response = await managerApi.updateSettings(data);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error('Failed to update settings');
+  },
+
+  async getSessions(): Promise<Session[]> {
+    const response = await managerApi.getSessions();
+    if (response.success && response.data?.sessions) {
+      return response.data.sessions;
+    }
+    return [];
   },
 };
 

@@ -1,6 +1,6 @@
-# Payroll System Backend
+# MeeTech Labs Management system Backend
 
-Backend API for the Payroll System built with Node.js, Express, and MongoDB.
+Backend API for the MeeTech Labs Management system built with Node.js, Express, and MongoDB.
 
 ## Setup
 

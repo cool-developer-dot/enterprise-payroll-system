@@ -39,8 +39,8 @@ const otherDeductionSchema = new mongoose.Schema({
 }, { _id: false });
 
 const earningsSchema = new mongoose.Schema({
-  baseSalary: { type: Number },
-  hourlyRate: { type: Number },
+  baseSalary: { type: Number }, // Monthly salary (required)
+  hourlyRate: { type: Number, default: 0 }, // Not applicable - system uses monthly salary only
   regularPay: { type: Number },
   overtimePay: { type: Number },
   bonuses: [bonusSchema],

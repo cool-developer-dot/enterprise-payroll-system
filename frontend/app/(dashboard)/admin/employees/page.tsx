@@ -44,9 +44,9 @@ export default function AdminEmployeesPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError("Failed to load employees. Please try again.");
+          const errorMessage = err?.message || "Failed to load employees. Please try again.";
+          setError(errorMessage);
           setLoading(false);
-          console.error(err);
         }
       });
     return () => {

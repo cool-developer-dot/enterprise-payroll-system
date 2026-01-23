@@ -66,38 +66,6 @@ export default function CompanySettings({ settings, onChange }: CompanySettingsP
               required
             />
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[#0F172A]">Company Logo</label>
-            <div className="flex items-center gap-4">
-              {settings.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={settings.logoUrl}
-                  alt="Company logo"
-                  className="h-16 w-16 rounded-lg object-cover border border-slate-200"
-                />
-              )}
-              <div className="flex-1">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        onChange({ ...settings, logoUrl: reader.result as string });
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  className="text-sm"
-                />
-                <p className="text-xs text-[#64748B] mt-1">Upload PNG, JPG or SVG (max 2MB)</p>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { timesheetService, type Timesheet } from "@/lib/services/timesheetService";
+import { toast } from "@/lib/hooks/useToast";
 
 export default function AdminTimesheetsPage() {
   const [loading, setLoading] = useState(true);
@@ -47,8 +48,7 @@ export default function AdminTimesheetsPage() {
       setDepartments(deptData);
       setRoles(roleData);
     } catch (error: any) {
-      console.error('Failed to load data:', error);
-      alert(error.message || 'Failed to load timesheets');
+      toast.error(error.message || 'Failed to load timesheets');
     } finally {
       setLoading(false);
     }
@@ -58,11 +58,11 @@ export default function AdminTimesheetsPage() {
     try {
       setActionLoading(id);
       await timesheetService.approveTimesheet(id, comment || undefined);
-      alert('Timesheet approved successfully');
+      toast.success('Timesheet approved successfully');
       setComment('');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to approve timesheet');
+      toast.error(error.message || 'Failed to approve timesheet');
     } finally {
       setActionLoading(null);
     }
@@ -70,17 +70,17 @@ export default function AdminTimesheetsPage() {
 
   const handleReject = async (id: string) => {
     if (!rejectReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.warning('Please provide a rejection reason');
       return;
     }
     try {
       setActionLoading(id);
       await timesheetService.rejectTimesheet(id, rejectReason);
-      alert('Timesheet rejected successfully');
+      toast.success('Timesheet rejected successfully');
       setRejectReason('');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to reject timesheet');
+      toast.error(error.message || 'Failed to reject timesheet');
     } finally {
       setActionLoading(null);
     }
@@ -88,18 +88,18 @@ export default function AdminTimesheetsPage() {
 
   const handleBulkApprove = async () => {
     if (selectedIds.length === 0) {
-      alert('Please select timesheets to approve');
+      toast.warning('Please select timesheets to approve');
       return;
     }
     try {
       setActionLoading('bulk-approve');
       await timesheetService.bulkApproveTimesheets(selectedIds, comment || undefined);
-      alert(`${selectedIds.length} timesheet(s) approved successfully`);
+      toast.success(`${selectedIds.length} timesheet(s) approved successfully`);
       setSelectedIds([]);
       setComment('');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to approve timesheets');
+      toast.error(error.message || 'Failed to approve timesheets');
     } finally {
       setActionLoading(null);
     }
@@ -107,22 +107,22 @@ export default function AdminTimesheetsPage() {
 
   const handleBulkReject = async () => {
     if (selectedIds.length === 0) {
-      alert('Please select timesheets to reject');
+      toast.warning('Please select timesheets to reject');
       return;
     }
     if (!rejectReason.trim()) {
-      alert('Please provide a rejection reason');
+      toast.warning('Please provide a rejection reason');
       return;
     }
     try {
       setActionLoading('bulk-reject');
       await timesheetService.bulkRejectTimesheets(selectedIds, rejectReason);
-      alert(`${selectedIds.length} timesheet(s) rejected successfully`);
+      toast.success(`${selectedIds.length} timesheet(s) rejected successfully`);
       setSelectedIds([]);
       setRejectReason('');
       await loadData();
     } catch (error: any) {
-      alert(error.message || 'Failed to reject timesheets');
+      toast.error(error.message || 'Failed to reject timesheets');
     } finally {
       setActionLoading(null);
     }

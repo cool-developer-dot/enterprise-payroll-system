@@ -56,6 +56,51 @@ export interface CreatePerformanceUpdateData {
 
 export interface UpdatePerformanceUpdateData extends Partial<CreatePerformanceUpdateData> {}
 
+export interface ManagerSettings {
+  profile: {
+    name: string;
+    email: string;
+    role: string;
+    phone?: string;
+    photo?: string;
+    department?: string;
+    position?: string;
+  };
+  preferences: {
+    emailNotifications: boolean;
+    approvalNotifications: boolean;
+    defaultPeriod: string;
+    language?: string;
+    timezone?: string;
+    dateFormat?: string;
+    theme?: string;
+  };
+}
+
+export interface UpdateManagerSettingsData {
+  name?: string;
+  phone?: string;
+  preferences?: {
+    emailNotifications?: boolean;
+    approvalNotifications?: boolean;
+    defaultPeriod?: string;
+    language?: string;
+    timezone?: string;
+    dateFormat?: string;
+    theme?: string;
+  };
+}
+
+export interface Session {
+  _id: string;
+  device: string;
+  location: string;
+  lastActive: string;
+  ipAddress: string;
+  current: boolean;
+  createdAt: string;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -134,6 +179,18 @@ export const managerApi = {
 
   async updatePerformanceUpdate(id: string, data: UpdatePerformanceUpdateData): Promise<ApiResponse<{ update: PerformanceUpdate }>> {
     return apiClient.put<ApiResponse<{ update: PerformanceUpdate }>>(`/manager/performance-updates/${id}`, data);
+  },
+
+  async getSettings(): Promise<ApiResponse<ManagerSettings>> {
+    return apiClient.get<ApiResponse<ManagerSettings>>('/manager/settings');
+  },
+
+  async updateSettings(data: UpdateManagerSettingsData): Promise<ApiResponse<ManagerSettings>> {
+    return apiClient.put<ApiResponse<ManagerSettings>>('/manager/settings', data);
+  },
+
+  async getSessions(): Promise<ApiResponse<{ sessions: Session[] }>> {
+    return apiClient.get<ApiResponse<{ sessions: Session[] }>>('/manager/sessions');
   },
 };
 

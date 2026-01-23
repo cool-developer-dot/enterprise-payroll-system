@@ -79,6 +79,29 @@ export const getLeaveRequests = async (req, res, next) => {
     if (req.user.role === 'employee') {
       // Employees can only see their own requests
       query.employeeId = req.user._id;
+    } else if (req.user.role === 'dept_lead') {
+      // Dept leads can only see leave requests from their department employees
+      try {
+        const deptLead = await User.findById(req.user._id).select('department').lean();
+        if (deptLead?.department) {
+          // Get all employees in the same department
+          const departmentEmployees = await User.find({
+            department: deptLead.department,
+            status: { $in: ['active', 'on-leave'] }
+          }).select('_id').lean();
+          
+          const deptEmployeeIds = departmentEmployees.map(emp => emp._id);
+          deptEmployeeIds.push(req.user._id); // Include dept_lead's own requests
+          
+          query.employeeId = { $in: deptEmployeeIds };
+        } else {
+          // If no department, only see own requests
+          query.employeeId = req.user._id;
+        }
+      } catch (err) {
+        console.error('[getLeaveRequests] Error fetching department employees for dept_lead:', err);
+        query.employeeId = req.user._id; // Fallback to own requests
+      }
     } else if (req.user.role === 'manager') {
       // Managers can see their direct reports' requests
       const directReports = await User.find({
@@ -160,6 +183,27 @@ export const getLeaveRequestById = async (req, res, next) => {
                        employee.reportsTo?.toString() === req.user._id.toString();
       if (!isManager && employeeIdStr !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view leave requests for your direct reports'));
+      }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view leave requests for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeIdStr !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view leave requests for employees in your department'));
       }
     }
     
@@ -385,13 +429,36 @@ export const approveLeaveRequest = async (req, res, next) => {
     
     // Verify approver has permission
     const employee = leaveRequest.employeeId;
-    const isManager = req.user.role === 'manager' && 
-      (employee.managerId?.toString() === req.user._id.toString() || 
-       employee.reportsTo?.toString() === req.user._id.toString());
+    const isManager = req.user.role === 'manager';
     const isAdmin = req.user.role === 'admin';
+    const isDeptLead = req.user.role === 'dept_lead';
     
-    if (!isManager && !isAdmin) {
+    if (!isManager && !isAdmin && !isDeptLead) {
       return next(new AccessDeniedError('You do not have permission to approve this leave request'));
+    }
+    
+    // For dept_lead, verify the employee is in their department
+    if (isDeptLead) {
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new AccessDeniedError('Department lead not found'));
+      }
+      
+      const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+      if (!employeeUser) {
+        return next(new AccessDeniedError('Employee not found'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employeeUser.departmentId && 
+         deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+        (deptLead.department && employeeUser.department && 
+         deptLead.department === employeeUser.department);
+      
+      if (!sameDepartment) {
+        return next(new AccessDeniedError('You can only approve leave requests for employees in your department'));
+      }
     }
     
     // Double-check availability (in case balance changed)
@@ -486,13 +553,36 @@ export const rejectLeaveRequest = async (req, res, next) => {
     
     // Verify rejector has permission
     const employee = leaveRequest.employeeId;
-    const isManager = req.user.role === 'manager' && 
-      (employee.managerId?.toString() === req.user._id.toString() || 
-       employee.reportsTo?.toString() === req.user._id.toString());
+    const isManager = req.user.role === 'manager';
     const isAdmin = req.user.role === 'admin';
+    const isDeptLead = req.user.role === 'dept_lead';
     
-    if (!isManager && !isAdmin) {
+    if (!isManager && !isAdmin && !isDeptLead) {
       return next(new AccessDeniedError('You do not have permission to reject this leave request'));
+    }
+    
+    // For dept_lead, verify the employee is in their department
+    if (isDeptLead) {
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new AccessDeniedError('Department lead not found'));
+      }
+      
+      const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+      if (!employeeUser) {
+        return next(new AccessDeniedError('Employee not found'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employeeUser.departmentId && 
+         deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+        (deptLead.department && employeeUser.department && 
+         deptLead.department === employeeUser.department);
+      
+      if (!sameDepartment) {
+        return next(new AccessDeniedError('You can only reject leave requests for employees in your department'));
+      }
     }
     
     // Update leave request
@@ -555,14 +645,36 @@ export const bulkApproveLeaveRequests = async (req, res, next) => {
       try {
         // Verify permission
         const employee = request.employeeId;
-        const isManager = req.user.role === 'manager' && 
-          (employee.managerId?.toString() === req.user._id.toString() || 
-           employee.reportsTo?.toString() === req.user._id.toString());
+        const isManager = req.user.role === 'manager';
         const isAdmin = req.user.role === 'admin';
+        const isDeptLead = req.user.role === 'dept_lead';
         
-        if (!isManager && !isAdmin) {
+        if (!isManager && !isAdmin && !isDeptLead) {
           failed.push({ id: request._id, reason: 'No permission' });
           continue;
+        }
+        
+        // For dept_lead, verify the employee is in their department
+        if (isDeptLead) {
+          const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+          const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+          
+          if (!deptLead || !employeeUser) {
+            failed.push({ id: request._id, reason: 'Department validation failed' });
+            continue;
+          }
+          
+          // Check if employee is in dept_lead's department
+          const sameDepartment = 
+            (deptLead.departmentId && employeeUser.departmentId && 
+             deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+            (deptLead.department && employeeUser.department && 
+             deptLead.department === employeeUser.department);
+          
+          if (!sameDepartment) {
+            failed.push({ id: request._id, reason: 'Employee not in your department' });
+            continue;
+          }
         }
         
         // Check availability
@@ -675,14 +787,36 @@ export const bulkRejectLeaveRequests = async (req, res, next) => {
       try {
         // Verify permission
         const employee = request.employeeId;
-        const isManager = req.user.role === 'manager' && 
-          (employee.managerId?.toString() === req.user._id.toString() || 
-           employee.reportsTo?.toString() === req.user._id.toString());
+        const isManager = req.user.role === 'manager';
         const isAdmin = req.user.role === 'admin';
+        const isDeptLead = req.user.role === 'dept_lead';
         
-        if (!isManager && !isAdmin) {
+        if (!isManager && !isAdmin && !isDeptLead) {
           failed.push({ id: request._id, reason: 'No permission' });
           continue;
+        }
+        
+        // For dept_lead, verify the employee is in their department
+        if (isDeptLead) {
+          const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+          const employeeUser = await User.findById(employee._id).select('department departmentId').lean();
+          
+          if (!deptLead || !employeeUser) {
+            failed.push({ id: request._id, reason: 'Department validation failed' });
+            continue;
+          }
+          
+          // Check if employee is in dept_lead's department
+          const sameDepartment = 
+            (deptLead.departmentId && employeeUser.departmentId && 
+             deptLead.departmentId.toString() === employeeUser.departmentId.toString()) ||
+            (deptLead.department && employeeUser.department && 
+             deptLead.department === employeeUser.department);
+          
+          if (!sameDepartment) {
+            failed.push({ id: request._id, reason: 'Employee not in your department' });
+            continue;
+          }
         }
         
         // Update request
@@ -785,6 +919,27 @@ export const getEmployeeLeaveBalance = async (req, res, next) => {
       if (!isManager && employeeId !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view leave balances for your direct reports'));
       }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view leave balances for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeId !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view leave balances for employees in your department'));
+      }
     }
     
     const queryYear = year ? parseInt(year) : new Date().getFullYear();
@@ -817,6 +972,27 @@ export const getYearSpecificBalance = async (req, res, next) => {
                        employee.reportsTo?.toString() === req.user._id.toString();
       if (!isManager && employeeId !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view leave balances for your direct reports'));
+      }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view leave balances for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeId !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view leave balances for employees in your department'));
       }
     }
     
@@ -855,6 +1031,27 @@ export const getEmployeeLeaveRequests = async (req, res, next) => {
                        employee.reportsTo?.toString() === req.user._id.toString();
       if (!isManager && employeeId !== req.user._id.toString()) {
         return next(new AccessDeniedError('You can only view leave requests for your direct reports'));
+      }
+    } else if (req.user.role === 'dept_lead') {
+      // Dept_lead can view leave requests for employees in their department
+      const employee = await User.findById(employeeId);
+      if (!employee) {
+        return next(new ResourceNotFoundError('Employee'));
+      }
+      const deptLead = await User.findById(req.user._id).select('department departmentId').lean();
+      if (!deptLead) {
+        return next(new ResourceNotFoundError('Department Lead'));
+      }
+      
+      // Check if employee is in dept_lead's department
+      const sameDepartment = 
+        (deptLead.departmentId && employee.departmentId && 
+         deptLead.departmentId.toString() === employee.departmentId.toString()) ||
+        (deptLead.department && employee.department && 
+         deptLead.department === employee.department);
+      
+      if (!sameDepartment && employeeId !== req.user._id.toString()) {
+        return next(new AccessDeniedError('You can only view leave requests for employees in your department'));
       }
     }
     

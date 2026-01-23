@@ -174,6 +174,66 @@ export const employeeService = {
       throw error;
     }
   },
+
+  async addEmployee(data: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    department?: string;
+    position?: string;
+    employmentType?: EmploymentType;
+    status?: EmploymentStatus;
+    photo?: string;
+    phone?: string;
+    employeeId?: string;
+    joinDate?: string;
+    contractStart?: string;
+    contractEnd?: string;
+    baseSalary?: number;
+  }): Promise<Employee> {
+    try {
+      // Map form data to CreateUserRequest format
+      const createUserData: any = {
+        name: data.name,
+        email: data.email,
+        password: data.password, // Password required for user creation
+        role: data.role || 'employee',
+        department: data.department,
+        position: data.position,
+        employmentType: data.employmentType || 'full-time',
+        status: data.status || 'active',
+        photo: data.photo,
+        phone: data.phone,
+        employeeId: data.employeeId,
+        joinDate: data.joinDate,
+      };
+
+      // Add monthly salary (required for employee and manager roles)
+      if ((data.role === 'employee' || data.role === 'manager') && data.baseSalary) {
+        createUserData.baseSalary = data.baseSalary;
+      }
+
+      // Add contract dates if employment type is contract
+      if (data.employmentType === 'contract') {
+        if (data.contractStart) {
+          createUserData.contractStart = data.contractStart;
+        }
+        if (data.contractEnd) {
+          createUserData.contractEnd = data.contractEnd;
+        }
+      }
+
+      const response = await usersApi.createUser(createUserData);
+      if (response.success && response.data?.user) {
+        return mapId(response.data.user) as Employee;
+      }
+      throw new Error(response.message || 'Failed to create employee');
+    } catch (error) {
+      console.error('Failed to add employee:', error);
+      throw error;
+    }
+  },
 };
 
 // Export types for admin employee management
