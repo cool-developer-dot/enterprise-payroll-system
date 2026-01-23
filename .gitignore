@@ -40,7 +40,9 @@ Thumbs.db
 .vercel
 
 # Uploads and generated files
-backend/uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
+!backend/uploads/*/.gitkeep
 backend/temp/
 *.pdf
 *.xlsx
