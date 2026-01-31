@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -16,13 +16,7 @@ export default function EmployeeTasksPage() {
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user?.id) {
-      loadTasks();
-    }
-  }, [user]);
-
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
@@ -42,7 +36,13 @@ export default function EmployeeTasksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadTasks();
+    }
+  }, [user?.id, loadTasks]);
 
   const handleStatusUpdate = async (taskId: string, newStatus: TaskStatus) => {
     try {
@@ -102,7 +102,7 @@ export default function EmployeeTasksPage() {
       </div>
 
       {currentTasks.length > 0 && (
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-[#0F172A]">Current Tasks</CardTitle>
           </CardHeader>
@@ -186,14 +186,14 @@ export default function EmployeeTasksPage() {
       )}
 
       {upcomingTasks.length > 0 && (
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-[#0F172A]">Upcoming Tasks</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {upcomingTasks.map((task) => (
-                <div key={task.id} className="p-4 rounded-lg border border-slate-200 bg-white">
+                <div key={task.id} className="p-4 rounded-lg border-2 border-slate-300 bg-white hover:bg-blue-50 transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <Link href={`/employee/tasks/${task.id}`}>

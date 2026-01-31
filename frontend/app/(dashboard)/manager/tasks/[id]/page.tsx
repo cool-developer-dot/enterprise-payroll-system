@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -20,13 +20,8 @@ export default function ManagerTaskDetailPage() {
   const [updating, setUpdating] = useState(false);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (taskId) {
-      loadTask();
-    }
-  }, [taskId]);
-
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
+    if (!taskId) return;
     try {
       setLoading(true);
       const taskData = await taskService.getTask(taskId);
@@ -43,7 +38,13 @@ export default function ManagerTaskDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId, router]);
+
+  useEffect(() => {
+    if (taskId) {
+      loadTask();
+    }
+  }, [taskId, loadTask]);
 
   const handleStatusUpdate = async (newStatus: TaskStatus) => {
     if (!task) return;
@@ -130,7 +131,7 @@ export default function ManagerTaskDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border border-slate-200 bg-white">
+          <Card className="border-2 border-slate-300 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#0F172A]">Task Details</CardTitle>
             </CardHeader>
@@ -233,7 +234,7 @@ export default function ManagerTaskDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200 bg-white">
+          <Card className="border-2 border-slate-300 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#0F172A]">Attachments</CardTitle>
             </CardHeader>
@@ -248,7 +249,7 @@ export default function ManagerTaskDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border border-slate-200 bg-white">
+          <Card className="border-2 border-slate-300 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#0F172A]">Actions</CardTitle>
             </CardHeader>
@@ -271,7 +272,7 @@ export default function ManagerTaskDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-slate-200 bg-white">
+          <Card className="border-2 border-slate-300 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#0F172A]">Assigned By</CardTitle>
             </CardHeader>

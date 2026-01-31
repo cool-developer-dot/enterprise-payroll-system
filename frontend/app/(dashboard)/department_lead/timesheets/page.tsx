@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -29,11 +29,7 @@ export default function DepartmentLeadTimesheetsPage() {
   const [comment, setComment] = useState('');
   const [rejectReason, setRejectReason] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, [filters]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const filterParams: TimesheetFilter = {
@@ -59,7 +55,11 @@ export default function DepartmentLeadTimesheetsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleApprove = async (id: string) => {
     try {

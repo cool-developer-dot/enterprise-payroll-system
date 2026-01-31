@@ -73,10 +73,10 @@ export default function EmployeeLeavePage() {
 
   const getStatusBadge = (status: string) => {
     if (status === "approved")
-      return "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20";
+      return "bg-[#16A34A]/10 text-[#16A34A] border-2 border-[#16A34A]/30 font-semibold";
     if (status === "pending")
-      return "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20";
-    return "bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20";
+      return "bg-[#F59E0B]/10 text-[#F59E0B] border-2 border-[#F59E0B]/30 font-semibold";
+    return "bg-[#DC2626]/10 text-[#DC2626] border-2 border-[#DC2626]/30 font-semibold";
   };
 
   const getLeaveTypeLabel = (type: string) => {
@@ -161,7 +161,7 @@ export default function EmployeeLeavePage() {
       {balanceData.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {balanceData.map((balance, idx) => (
-            <Card key={idx} className="border border-slate-200 bg-white">
+            <Card key={idx} className="border-2 border-slate-300 bg-white shadow-sm">
               <CardContent className="p-6">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-[#0F172A] mb-1">{balance.type} Leave</p>
@@ -183,7 +183,7 @@ export default function EmployeeLeavePage() {
         </div>
       )}
 
-      <Card className="border border-slate-200 bg-white">
+      <Card className="border-2 border-slate-300 bg-white shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-bold text-[#0F172A]">Leave History</CardTitle>
         </CardHeader>
@@ -197,7 +197,7 @@ export default function EmployeeLeavePage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b-2 border-slate-300 bg-gradient-to-r from-slate-50 to-blue-50">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-[#0F172A]">Type</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-[#0F172A]">Dates</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-[#0F172A]">Days</th>
@@ -208,7 +208,7 @@ export default function EmployeeLeavePage() {
                   {leaveHistory.map((leave) => (
                     <tr
                       key={leave.id}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                      className="border-b border-slate-200 hover:bg-blue-50 transition-colors bg-white"
                     >
                       <td className="py-4 px-4">
                         <p className="text-sm font-semibold text-[#0F172A]">{getLeaveTypeLabel(leave.leaveType)}</p>
@@ -246,7 +246,7 @@ export default function EmployeeLeavePage() {
 
       {showRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md border border-slate-200 bg-white">
+          <Card className="w-full max-w-md border-2 border-slate-400 bg-white shadow-2xl">
             <CardHeader className="flex items-center justify-between">
               <CardTitle className="text-lg font-bold text-[#0F172A]">Request Leave</CardTitle>
               <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { notificationService, type Notification } from "@/lib/services/notificationService";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -11,23 +11,16 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadUnreadCount();
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
-
-  const loadUnreadCount = async () => {
+  const loadUnreadCount = useCallback(async () => {
     try {
       const count = await notificationService.getUnreadCount();
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to load unread count:', error);
     }
-  };
+  }, []);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const result = await notificationService.getNotifications({ limit: 10 });
@@ -37,7 +30,29 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUnreadCount();
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen, loadUnreadCount, loadNotifications]);
+
+  // Poll for new notifications every 30 seconds
+  useEffect(() => {
+    loadUnreadCount();
+    
+    const interval = setInterval(() => {
+      loadUnreadCount();
+      if (isOpen) {
+        loadNotifications();
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [isOpen, loadUnreadCount, loadNotifications]);
+
 
   const handleMarkAsRead = async (id: string) => {
     try {

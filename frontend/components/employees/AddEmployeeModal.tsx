@@ -116,9 +116,39 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmpl
       });
       onSuccess();
       onClose();
-    } catch (err) {
-      setError("Failed to add employee. Please try again.");
-      console.error(err);
+    } catch (err: any) {
+      // Extract error message from API response with better error handling
+      let errorMessage = "Failed to add employee. Please try again.";
+      
+      if (err?.message) {
+        errorMessage = err.message;
+        
+        // Handle network errors with more user-friendly messages
+        if (err.message.includes('Network error') || err.message.includes('Failed to fetch')) {
+          errorMessage = err.message; // Use the improved message from apiClient
+        } else if (err.message.includes('Unable to connect')) {
+          errorMessage = err.message; // Use the detailed connection error
+        } else {
+          // For other errors, use the message as-is
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
+      
+      // Log detailed error for debugging
+      console.error("[AddEmployeeModal] Error adding employee:", {
+        error: err,
+        message: err?.message,
+        stack: err?.stack,
+        formData: {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          department: formData.department,
+        },
+        timestamp: new Date().toISOString(),
+      });
     } finally {
       setLoading(false);
     }
@@ -338,8 +368,25 @@ export default function AddEmployeeModal({ isOpen, onClose, onSuccess }: AddEmpl
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                {error}
+              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800 mb-1">Error</p>
+                    <p className="text-sm text-red-700 whitespace-pre-line">{error}</p>
+                  </div>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-600 hover:text-red-800 transition-colors flex-shrink-0"
+                    aria-label="Dismiss error"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
 

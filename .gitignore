@@ -1,21 +1,27 @@
-# Root .gitignore for Payroll System
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production
+/build
+/dist
+.next/
+out/
 
 # Environment variables
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.production
-.env.development
-.env*.local
-
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build outputs
-dist/
-build/
-.next/
-out/
+backend/.env
+frontend/.env.production
 
 # Logs
 logs/
@@ -23,38 +29,45 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pm2-error.log
+pm2-out.log
+pm2-combined.log
 
-# OS files
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
+# Uploads (keep structure, ignore files)
+backend/uploads/profiles/*
+!backend/uploads/profiles/.gitkeep
+backend/uploads/general/*
+!backend/uploads/general/.gitkeep
+backend/uploads/reports/*
+!backend/uploads/reports/.gitkeep
 
 # IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
+*.swp
+*.swo
+*~
 
-# Vercel
-.vercel
+# OS
+.DS_Store
+Thumbs.db
 
-# Uploads and generated files
-backend/uploads/
-backend/temp/
-*.pdf
-*.xlsx
-*.xls
-
-# Testing
-coverage/
-.nyc_output/
-
-# TypeScript
+# Build artifacts
 *.tsbuildinfo
-next-env.d.ts
-
-# Misc
 .cache/
-.temp/
 
+# PM2
+.pm2/
+
+# Backups
+*.tar.gz
+backups/
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+
+# Temporary files
+tmp/
+temp/

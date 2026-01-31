@@ -183,19 +183,19 @@ export default function EmployeeTimesheetPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardContent className="p-4">
             <p className="text-sm text-[#64748B] mb-1">Total Hours</p>
             <p className="text-2xl font-bold text-[#0F172A]">{totalHours.toFixed(1)}h</p>
           </CardContent>
         </Card>
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardContent className="p-4">
             <p className="text-sm text-[#64748B] mb-1">Regular Hours</p>
             <p className="text-2xl font-bold text-[#0F172A]">{regularHours.toFixed(1)}h</p>
           </CardContent>
         </Card>
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardContent className="p-4">
             <p className="text-sm text-[#64748B] mb-1">Overtime Hours</p>
             <p className="text-2xl font-bold text-[#0F172A]">{overtimeHours.toFixed(1)}h</p>

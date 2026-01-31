@@ -71,7 +71,7 @@ export default function EmployeePaystubsPage() {
       </div>
 
       {paystubs.length === 0 ? (
-        <Card className="border border-slate-200 bg-white">
+        <Card className="border-2 border-slate-300 bg-white shadow-sm">
           <CardContent className="py-12">
             <div className="text-center text-[#64748B]">
               <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,8 +91,8 @@ export default function EmployeePaystubsPage() {
             {paystubs.map((stub) => (
               <Card
                 key={stub.id}
-                className={`border border-slate-200 bg-white hover:shadow-lg transition-all cursor-pointer ${
-                  selectedStub === stub.id ? "ring-2 ring-[#2563EB]" : ""
+                className={`border-2 border-slate-300 bg-white hover:shadow-xl transition-all cursor-pointer shadow-sm ${
+                  selectedStub === stub.id ? "ring-2 ring-[#2563EB] border-[#2563EB]" : ""
                 }`}
                 onClick={() => setSelectedStub(selectedStub === stub.id ? null : stub.id)}
               >
@@ -106,8 +106,8 @@ export default function EmployeePaystubsPage() {
                         <Badge
                           className={
                             stub.status === "paid"
-                              ? "bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20"
-                              : "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20"
+                              ? "bg-[#16A34A]/10 text-[#16A34A] border-2 border-[#16A34A]/30 font-semibold"
+                              : "bg-[#F59E0B]/10 text-[#F59E0B] border-2 border-[#F59E0B]/30 font-semibold"
                           }
                         >
                           {stub.status === "paid" ? "Paid" : "Processing"}
@@ -162,7 +162,7 @@ export default function EmployeePaystubsPage() {
 
           {selectedPaystub && (
             <div className="lg:col-span-1">
-              <Card className="border border-slate-200 bg-white sticky top-6">
+              <Card className="border-2 border-slate-300 bg-white sticky top-6 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold text-[#0F172A]">Pay Stub Details</CardTitle>
                 </CardHeader>

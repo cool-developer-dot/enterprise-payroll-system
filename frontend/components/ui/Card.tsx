@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {}
 
 const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, role, ...props }, ref) => {
     return (
       <div
         ref={ref}
+        role={role || "article"}
         className={cn(
           "rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl text-card-foreground shadow-xl",
           className

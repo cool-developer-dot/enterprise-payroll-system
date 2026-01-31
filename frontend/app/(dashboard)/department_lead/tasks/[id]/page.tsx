@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -30,13 +30,7 @@ export default function DepartmentLeadTaskDetailPage() {
   const [updateHistory, setUpdateHistory] = useState<TaskUpdate[]>([]);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (taskId) {
-      loadTask();
-    }
-  }, [taskId]);
-
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
     try {
       setLoading(true);
       const taskData = await taskService.getTask(taskId);
@@ -54,7 +48,13 @@ export default function DepartmentLeadTaskDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId, router]);
+
+  useEffect(() => {
+    if (taskId) {
+      loadTask();
+    }
+  }, [taskId, loadTask]);
 
   const buildUpdateHistory = (taskData: Task) => {
     const history: TaskUpdate[] = [];

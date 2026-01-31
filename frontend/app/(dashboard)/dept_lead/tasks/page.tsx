@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -30,13 +30,7 @@ export default function DeptLeadTasksPage() {
     overdue: 0,
   });
 
-  useEffect(() => {
-    if (user?.id) {
-      loadTasks();
-    }
-  }, [user, filters, sort, page]);
-
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -66,7 +60,13 @@ export default function DeptLeadTasksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, sort, page]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadTasks();
+    }
+  }, [user, loadTasks]);
 
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {

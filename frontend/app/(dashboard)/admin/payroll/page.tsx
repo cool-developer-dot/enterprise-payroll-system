@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
@@ -29,28 +29,28 @@ export default function AdminPayrollPage() {
   const [editingPeriod, setEditingPeriod] = useState<PayrollPeriod | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-    setLoading(true);
+      setLoading(true);
       const [periodsData, current, nextDate] = await Promise.all([
-      payrollService.getPayrollPeriods(filters),
+        payrollService.getPayrollPeriods(filters),
         payrollService.getCurrentPeriod().catch(() => null),
         payrollService.getNextPayrollDate().catch(() => ""),
       ]);
-        setPeriods(periodsData);
-        setCurrentPeriod(current);
-        setNextPayrollDate(nextDate);
+      setPeriods(periodsData);
+      setCurrentPeriod(current);
+      setNextPayrollDate(nextDate);
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to load payroll data. Please refresh the page.';
       setNotification({ type: 'error', message: errorMessage });
     } finally {
-        setLoading(false);
-      }
-    };
+      setLoading(false);
+    }
+  }, [filters]);
 
   useEffect(() => {
     loadData();
-  }, [filters]);
+  }, [loadData]);
 
   const handleFilterChange = (field: keyof PayrollFilter, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value || undefined }));

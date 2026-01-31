@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -21,13 +21,7 @@ export default function AdminTaskDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (taskId) {
-      loadTask();
-    }
-  }, [taskId]);
-
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
     try {
       setLoading(true);
       const taskData = await taskService.getTask(taskId);
@@ -44,7 +38,13 @@ export default function AdminTaskDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId, router]);
+
+  useEffect(() => {
+    if (taskId) {
+      loadTask();
+    }
+  }, [taskId, loadTask]);
 
   const handleStatusUpdate = async (newStatus: TaskStatus) => {
     if (!task) return;
@@ -324,10 +324,14 @@ export default function AdminTaskDetailPage() {
             <CardHeader>
               <CardTitle className="text-lg font-bold text-[#0F172A]">Task Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
+            <CardContent className="space-y-4">
+              <div className="min-w-0">
                 <p className="text-xs text-[#64748B] mb-1">Task ID</p>
-                <p className="text-sm font-mono text-[#0F172A]">{task.id}</p>
+                <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 overflow-x-auto">
+                  <p className="text-xs sm:text-sm font-mono text-[#0F172A] break-all">
+                    {task.id}
+                  </p>
+                </div>
               </div>
               <div>
                 <p className="text-xs text-[#64748B] mb-1">Assigned By</p>

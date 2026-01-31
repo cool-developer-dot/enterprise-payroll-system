@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { ROLES, type Role } from "@/lib/constants/roles";
 import Button from "@/components/ui/Button";
 import Link from "next/link";
@@ -25,13 +26,21 @@ export default function TopNav({ role }: TopNavProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 bg-white/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 shadow-sm">
+    <header className="sticky top-0 z-30 flex min-h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 bg-white/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 shadow-sm py-2">
       {(role === ROLES.MANAGER || role === ROLES.DEPT_LEAD) && (
-        <div className="flex items-center gap-3">
-          <div className="h-16 w-16 flex items-center justify-center">
-            <img src="/payroll logo.png" alt="MeeTech Labs Management system" className="w-full h-full object-contain drop-shadow-md" />
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 flex-shrink-0 flex items-center justify-center">
+            <Image
+              src="/payroll logo.png"
+              alt="MeeTech Labs Management system"
+              width={56}
+              height={56}
+              className="w-full h-full object-contain drop-shadow-md"
+            />
           </div>
-          <h1 className="text-lg font-bold text-[#0F172A] hidden sm:block">MeeTech Labs Management system</h1>
+          <h1 className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-[#0F172A] break-words leading-tight min-w-0 flex-1">
+            MeeTech Labs Management system
+          </h1>
         </div>
       )}
       <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">

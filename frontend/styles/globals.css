@@ -69,3 +69,100 @@
     transform: rotateY(180deg);
   }
 }
+
+/* Fix select dropdown options to show full text */
+select option {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 8px 12px;
+}
+
+/* Remove red validation border for optional date inputs */
+input[type="date"]:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: rgb(37 99 235 / 0.3);
+}
+
+input[type="date"]:invalid:focus {
+  border-color: #2563EB;
+}
+
+/* Ensure select elements show full text */
+select {
+  text-overflow: ellipsis;
+}
+
+select option {
+  white-space: pre-wrap;
+  overflow: visible;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Accessibility: Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Accessibility: Focus visible improvements for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #2563EB;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Accessibility: Skip link styling */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #2563EB;
+  color: white;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 4px;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Accessibility: High contrast mode support */
+@media (prefers-contrast: high) {
+  * {
+    border-width: 2px !important;
+  }
+  
+  .card {
+    border-width: 2px !important;
+  }
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
